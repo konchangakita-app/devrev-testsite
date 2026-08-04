@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}KON{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ app_url('/static/css/style.css') }}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% block site_header %}
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="{{ app_url('/') }}" class="logo">KON <span class="badge">demo</span></a>
+      <nav class="header-nav" aria-label="メインメニュー">
+        <a href="{{ app_url('/') }}#about">コンセプト</a>
+        <a href="{{ app_url('/') }}#guide-faq">FAQ</a>
+        <a href="{{ app_url('/contact') }}">お問い合わせ</a>
+        {% if user %}
+        <a href="{{ app_url('/reserve') }}">新規予約</a>
+        <a href="{{ app_url('/member/reservations') }}">マイ予約</a>
+        {% endif %}
+      </nav>
+      <nav class="header-actions">
+        {% if user %}
+        <a href="{{ app_url('/member') }}" class="btn btn-ghost btn-sm">{{ user.username }}</a>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-logout">ログアウト</button>
+        {% else %}
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-open-login">ログイン</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-open-register">会員登録</button>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  {% endblock %}
+
+  <main class="{% block main_class %}main{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block site_footer %}
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p class="footer-brand">KON</p>
+      <p class="footer-copy">架空のデモレストラン — DevRev PLuG 検証用サイト</p>
+      <p class="footer-admin"><a href="{{ app_url('/admin/login') }}">管理者ログイン</a></p>
+    </div>
+  </footer>
+  {% endblock %}
+
+  {% if not user %}
+  <div id="modal-login" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-panel" role="dialog">
+      <h2>ログイン</h2>
+      <p class="modal-error" id="login-error" hidden></p>
+      <form id="form-login">
+        <label>ユーザー名 <input name="username" required autocomplete="username"></label>
+        <label>パスワード <input name="password" type="password" required autocomplete="current-password"></label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>キャンセル</button>
+          <button type="submit" class="btn btn-primary">ログイン</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div id="modal-register" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-panel" role="dialog">
+      <h2>新規登録</h2>
+      <p class="modal-error" id="register-error" hidden></p>
+      <form id="form-register">
+        <label>ユーザー名 <input name="username" required minlength="2" autocomplete="username"></label>
+        <label>メール <input name="email" type="email" required autocomplete="email"></label>
+        <label>パスワード <input name="password" type="password" required minlength="6" autocomplete="new-password"></label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>キャンセル</button>
+          <button type="submit" class="btn btn-primary">登録</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+    window.__CSRF__ = {{ csrf_token | tojson }};
+    window.__USER_ID__ = {% if user %}{{ user.id }}{% else %}null{% endif %};
+    window.APP_BASE = {{ url_prefix | tojson }};
+  </script>
+  <script src="{{ app_url('/static/js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+
+  {% if plug_enabled and plug_app_id %}
+  {% if plug_prompt_user_ip %}
+  <div id="plug-user-ip-panel" class="plug-user-ip-panel" hidden aria-hidden="true">
+    <p class="plug-user-ip-panel__title">チャット用の接続元 IP</p>
+    <p id="plug-user-ip-ref" class="plug-user-ip-panel__ref" aria-live="polite"></p>
+    <p class="muted" style="font-size:0.82rem;margin:0 0 0.5rem;">会話が始まりました。サーバ推定の IP は自動で DevRev に同期されます。変える場合だけ編集して「会話に反映」を押してください。</p>
+    <label for="plug-user-ip-input">IP アドレス</label>
+    <input type="text" id="plug-user-ip-input" name="plug_user_ip" autocomplete="off" inputmode="numeric" placeholder="例: 192.0.2.1">
+    <p class="plug-user-ip-panel__err" id="plug-user-ip-err" hidden></p>
+    <div class="plug-user-ip-panel__actions">
+      <button type="button" class="btn btn-ghost" id="plug-user-ip-skip">サーバ推定を使う</button>
+      <button type="button" class="btn btn-primary" id="plug-user-ip-submit">会話に反映</button>
+    </div>
+  </div>
+  {% endif %}
+  <script src="https://plug-platform.devrev.ai/static/plug.js"></script>
+  <script>
+    (function () {
+      var appId = {{ plug_app_id | tojson }};
+      var sessionToken = {{ plug_session_token | tojson }};
+      var plugSessionRecording = {{ plug_session_recording | default(false) | tojson }};
+      /** DEVREV_PAT または AAT があれば true → conversations.update で user_ip を会話 CF に同期 */
+      var plugConversationSync = {{ plug_conversation_sync | default(false) | tojson }};
+      /** true のとき会話 ID 取得後に左下パネルで IP を入力してから同期 */
+      var plugPromptUserIp = {{ plug_prompt_user_ip | default(true) | tojson }};
+      /** URL に ?plug_debug=1 があると、addSessionProperties の送受信確認用ログを出す */
+      var plugDebug =
+        typeof URLSearchParams !== "undefined" &&
+        new URLSearchParams(window.location.search).get("plug_debug") === "1";
+      /** AAT 設定時: 4択クリックで conversations.create 経由の自動送信 */
+      var plugAutoSend = {{ plug_auto_send | default(false) | tojson }};
+      var plugMemberLoggedIn = window.__USER_ID__ != null;
+      var plugWidgetReady = false;
+      var pendingPlugConversation = null;
+
+      function applyPlugPromptSessionProperties(text) {
+        if (!text) {
+          return;
+        }
+        try {
+          window.plugSDK.addSessionProperties({
+            plug_prompt_message: text.slice(0, 500),
+            plug_prompt_source: "plug-prompt-choices"
+          });
+        } catch (propErr) {
+          if (plugDebug) {
+            console.warn("[PLuG debug] addSessionProperties (prompt) failed", propErr);
+          }
+        }
+      }
+
+      function openPlugConversationPrefill(text) {
+        if (!text) {
+          window.plugSDK.toggleWidget(true);
+          return true;
+        }
+        window.plugSDK.toggleWidget(true, "create_conversation", {
+          startConversationContent: text
+        });
+        applyPlugPromptSessionProperties(text);
+        return true;
+      }
+
+      function sendPlugConversationMessage(text) {
+        return fetch((window.APP_BASE || "") + "/api/plug/create-conversation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json"
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({
+            csrf_token: window.__CSRF__ || "",
+            message: text
+          })
+        }).then(function (r) {
+          return r.json().then(function (j) {
+            return { ok: r.ok, status: r.status, j: j };
+          });
+        });
+      }
+
+      function openPlugConversationView(conversationId, text) {
+        window.plugSDK.toggleWidget(true, "conversations_view", { id: conversationId });
+        applyPlugPromptSessionProperties(text);
+      }
+
+      function openPlugConversation(content, options) {
+        options = options || {};
+        var autoSend = options.autoSend !== false && plugAutoSend;
+        var text = content != null ? String(content).trim() : "";
+        if (!window.plugSDK || typeof window.plugSDK.toggleWidget !== "function") {
+          if (text) {
+            pendingPlugConversation = { text: text, options: options };
+          }
+          return false;
+        }
+        if (!plugWidgetReady) {
+          if (text) {
+            pendingPlugConversation = { text: text, options: options };
+          }
+          return false;
+        }
+
+        if (autoSend && text) {
+          sendPlugConversationMessage(text)
+            .then(function (x) {
+              var convRef = (x.j && (x.j.conversation_don || x.j.conversation_id)) || "";
+              if (x.ok && convRef) {
+                if (plugDebug) {
+                  console.info("[PLuG debug] auto-send conversation", convRef);
+                }
+                openPlugConversationView(convRef, text);
+                return;
+              }
+              if (plugDebug) {
+                console.warn("[PLuG debug] auto-send failed, fallback to prefill", x);
+              }
+              openPlugConversationPrefill(text);
+            })
+            .catch(function (err) {
+              console.warn("[PLuG] auto-send failed, fallback to prefill", err);
+              openPlugConversationPrefill(text);
+            });
+          pendingPlugConversation = null;
+          return true;
+        }
+
+        try {
+          openPlugConversationPrefill(text);
+          pendingPlugConversation = null;
+          return true;
+        } catch (err) {
+          console.warn("[PLuG] openPlugConversation failed", err);
+          return false;
+        }
+      }
+
+      function flushPendingPlugConversation() {
+        if (!pendingPlugConversation) {
+          return;
+        }
+        var queued = pendingPlugConversation;
+        pendingPlugConversation = null;
+        openPlugConversation(queued.text, queued.options || {});
+      }
+
+      window.openPlugConversation = openPlugConversation;
+
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest(".plug-prompt");
+        if (!btn) {
+          return;
+        }
+        openPlugConversation(btn.getAttribute("data-prompt") || "", {
+          autoSend: btn.getAttribute("data-auto-send") !== "false"
+        });
+      });
+
+      function tryInit() {
+        if (!window.plugSDK) {
+          setTimeout(tryInit, 100);
+          return;
+        }
+        bindUserIpPanelOnce();
+        /**
+         * - city / demo_* / region … セッションリプレイ等での確認用（従来どおり）。
+         * - user_ip … セッション属性用（概念は user_ip）。会話 CF を API で書くときは tnt__user_ip など（サーバの conversations.update が担当）。
+         * /api/user-context でサーバー推定 IP を付与する。
+         */
+        function applySessionPropertiesSync(phase, props) {
+          if (window.__USER_ID__ != null && window.__USER_ID__ !== "") {
+            props.helpsite_user_id = String(window.__USER_ID__);
+          }
+          try {
+            if (plugDebug) {
+              console.info("[PLuG debug] addSessionProperties (" + phase + ")", props);
+            }
+            var ret = window.plugSDK.addSessionProperties(props);
+            if (plugDebug && ret && typeof ret.then === "function") {
+              ret.then(
+                function (v) {
+                  console.info("[PLuG debug] addSessionProperties resolved (" + phase + ")", v);
+                },
+                function (err) {
+                  console.warn("[PLuG debug] addSessionProperties rejected (" + phase + ")", err);
+                }
+              );
+            }
+          } catch (e) {
+            console.warn("PLuG addSessionProperties failed (" + phase + ")", e);
+          }
+        }
+        function defaultProps() {
+          return {
+            demo_source: "sample-helpsite",
+            demo_region: "local",
+            city: "DemoCity",
+            region: "demo-east"
+          };
+        }
+        function mergePropsFromUserContext(data) {
+          var props = defaultProps();
+          if (!data || typeof data !== "object") {
+            return props;
+          }
+          props.demo_source =
+            data.demo_source != null ? String(data.demo_source) : props.demo_source;
+          props.demo_region =
+            data.demo_region != null ? String(data.demo_region) : props.demo_region;
+          props.city = data.city != null ? String(data.city) : props.city;
+          props.region = data.region != null ? String(data.region) : props.region;
+          if (data.user_ip != null && String(data.user_ip).length > 0) {
+            props.user_ip = String(data.user_ip);
+          }
+          return props;
+        }
+        async function applySessionPropertiesFromUserContext(phase) {
+          try {
+            var res = await fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" });
+            if (!res.ok) {
+              throw new Error("HTTP " + res.status);
+            }
+            var data = await res.json();
+            if (plugDebug) {
+              console.info("[PLuG debug] /api/user-context OK (" + phase + ")", data);
+            }
+            applySessionPropertiesSync(phase, mergePropsFromUserContext(data));
+          } catch (err) {
+            if (plugDebug) {
+              console.warn(
+                "[PLuG debug] /api/user-context failed, using defaults (" + phase + ")",
+                err
+              );
+            }
+            applySessionPropertiesSync(phase, defaultProps());
+          }
+        }
+        var syncedConversationRef = null;
+        var submittedUserIpByConv = Object.create(null);
+        var panelConversationRef = null;
+        /** plugPromptUserIp 時も、会話開始直後にサーバ推定 IP で 1 回だけ DevRev へ書く */
+        var serverIpPrimedForConv = Object.create(null);
+
+        function bindUserIpPanelOnce() {
+          if (!plugPromptUserIp) {
+            return;
+          }
+          var panel = document.getElementById("plug-user-ip-panel");
+          if (!panel || panel.getAttribute("data-bound") === "1") {
+            return;
+          }
+          panel.setAttribute("data-bound", "1");
+          var errEl = document.getElementById("plug-user-ip-err");
+          var refEl = document.getElementById("plug-user-ip-ref");
+          function setErr(msg) {
+            if (!errEl) {
+              return;
+            }
+            if (msg) {
+              errEl.textContent = msg;
+              errEl.removeAttribute("hidden");
+            } else {
+              errEl.textContent = "";
+              errEl.setAttribute("hidden", "");
+            }
+          }
+          function hidePanel() {
+            if (!panel) {
+              return;
+            }
+            panel.setAttribute("hidden", "");
+            panel.setAttribute("aria-hidden", "true");
+            panelConversationRef = null;
+            setErr("");
+          }
+          document.getElementById("plug-user-ip-submit").addEventListener("click", function () {
+            if (!panelConversationRef) {
+              return;
+            }
+            confirmUserIpForConversation(panelConversationRef, false);
+          });
+          document.getElementById("plug-user-ip-skip").addEventListener("click", function () {
+            if (!panelConversationRef) {
+              return;
+            }
+            confirmUserIpForConversation(panelConversationRef, true);
+          });
+
+          function confirmUserIpForConversation(ref, useServerOnly) {
+            setErr("");
+            var inp = document.getElementById("plug-user-ip-input");
+            var ip = "";
+            if (useServerOnly) {
+              fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" })
+                .then(function (r) {
+                  if (!r.ok) {
+                    throw new Error("HTTP " + r.status);
+                  }
+                  return r.json();
+                })
+                .then(function (d) {
+                  ip = d && d.user_ip != null ? String(d.user_ip).trim() : "";
+                  return finish(ref, ip);
+                })
+                .catch(function () {
+                  setErr("サーバ推定 IP の取得に失敗しました。");
+                });
+            } else {
+              ip = inp && inp.value ? String(inp.value).trim() : "";
+              if (!ip) {
+                fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" })
+                  .then(function (r) {
+                    if (!r.ok) {
+                      throw new Error("HTTP " + r.status);
+                    }
+                    return r.json();
+                  })
+                  .then(function (d) {
+                    ip = d && d.user_ip != null ? String(d.user_ip).trim() : "";
+                    if (!ip) {
+                      setErr("IP を入力するか「サーバ推定を使う」を選んでください。");
+                      return;
+                    }
+                    if (inp) {
+                      inp.value = ip;
+                    }
+                    return finish(ref, ip);
+                  })
+                  .catch(function () {
+                    setErr("IP を入力してください。");
+                  });
+              } else {
+                finish(ref, ip);
+              }
+            }
+          }
+
+          function finish(ref, ip) {
+            var base = defaultProps();
+            return fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" })
+              .then(function (r) {
+                if (r.ok) {
+                  return r.json().then(function (d) {
+                    return mergePropsFromUserContext(d);
+                  });
+                }
+                return base;
+              })
+              .catch(function () {
+                return base;
+              })
+              .then(function (props) {
+                props.user_ip = ip;
+                applySessionPropertiesSync("user_ip_submit", props);
+                return postSyncConversationUserIp(ref, ip).then(function (x) {
+                  if (!x || x.ok !== true) {
+                    var d =
+                      x && x.j && x.j.detail != null
+                        ? x.j.detail
+                        : x && x.j && typeof x.j === "string"
+                          ? x.j
+                          : "同期に失敗しました。";
+                    setErr(typeof d === "string" ? d.slice(0, 240) : JSON.stringify(d).slice(0, 240));
+                    return;
+                  }
+                  submittedUserIpByConv[ref] = true;
+                  hidePanel();
+                });
+              });
+          }
+        }
+
+        function normalizeConversationRefString(s) {
+          if (typeof s !== "string") {
+            return null;
+          }
+          var t = s.trim();
+          if (!t) {
+            return null;
+          }
+          if (/^CONV-\d+$/.test(t)) {
+            return t;
+          }
+          if (t.indexOf("don:") === 0 && t.indexOf(":conversation/") !== -1) {
+            return t;
+          }
+          return null;
+        }
+
+        function extractConversationRefFromPayload(payload) {
+          if (!payload || typeof payload !== "object") {
+            return null;
+          }
+          var dk;
+          var directKeys = [
+            "conversation_id",
+            "conversationId",
+            "active_conversation_id",
+            "activeConversationId"
+          ];
+          for (dk = 0; dk < directKeys.length; dk++) {
+            var hit = normalizeConversationRefString(payload[directKeys[dk]]);
+            if (hit) {
+              return hit;
+            }
+          }
+          if (typeof payload.doi === "string") {
+            var doiHit = normalizeConversationRefString(payload.doi);
+            if (doiHit) {
+              return doiHit;
+            }
+          }
+          var pconv = payload.conversation;
+          if (pconv && typeof pconv === "object") {
+            var pcid =
+              pconv.display_id ||
+              pconv.id ||
+              pconv.displayId ||
+              pconv.conversation_id;
+            var pnorm = normalizeConversationRefString(pcid);
+            if (pnorm) {
+              return pnorm;
+            }
+          }
+          var n = 0;
+          function walk(o, depth) {
+            if (o == null || depth > 10) {
+              return null;
+            }
+            if (typeof o === "string") {
+              return normalizeConversationRefString(o);
+            }
+            if (typeof o !== "object") {
+              return null;
+            }
+            if (++n > 120) {
+              return null;
+            }
+            var conv = o.conversation;
+            if (conv && typeof conv === "object") {
+              var cid = conv.display_id || conv.id;
+              if (typeof cid === "string") {
+                var h = walk(cid, depth + 1);
+                if (h) {
+                  return h;
+                }
+              }
+            }
+            if (typeof o.display_id === "string") {
+              var dd = normalizeConversationRefString(o.display_id);
+              if (dd) {
+                return dd;
+              }
+            }
+            if (typeof o.id === "string") {
+              var idHit = walk(o.id, depth + 1);
+              if (idHit) {
+                return idHit;
+              }
+            }
+            for (var k in o) {
+              if (!Object.prototype.hasOwnProperty.call(o, k)) {
+                continue;
+              }
+              var sub = walk(o[k], depth + 1);
+              if (sub) {
+                return sub;
+              }
+            }
+            return null;
+          }
+          return walk(payload, 0);
+        }
+        function postSyncConversationUserIp(conversationRef, explicitUserIp, syncOpts) {
+          syncOpts = syncOpts || {};
+          if (!plugConversationSync || !conversationRef) {
+            return Promise.resolve({ ok: true, skipped: true });
+          }
+          var hasExplicitIp =
+            explicitUserIp !== undefined &&
+            explicitUserIp !== null &&
+            String(explicitUserIp).trim().length > 0;
+          if (!hasExplicitIp) {
+            if (plugPromptUserIp && !syncOpts.implicitPrime) {
+              return Promise.resolve({ ok: true, skipped: true });
+            }
+            if (!plugPromptUserIp || !syncOpts.implicitPrime) {
+              if (syncedConversationRef === conversationRef) {
+                return Promise.resolve({ ok: true, skipped: true });
+              }
+              syncedConversationRef = conversationRef;
+            }
+          }
+          var payload = {
+            csrf_token: window.__CSRF__ || "",
+            conversation_id: conversationRef
+          };
+          if (hasExplicitIp) {
+            payload.user_ip = String(explicitUserIp).trim();
+          }
+          return fetch((window.APP_BASE || "") + "/api/plug/sync-conversation-custom-fields", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json"
+            },
+            credentials: "same-origin",
+            body: JSON.stringify(payload)
+          })
+            .then(function (r) {
+              return r.json().then(function (j) {
+                return { ok: r.ok, j: j };
+              });
+            })
+            .then(function (x) {
+              if (plugDebug) {
+                console.info(
+                  "[PLuG] sync-conversation-custom-fields",
+                  conversationRef,
+                  x.ok ? x.j : x.j
+                );
+              }
+              if (!x.ok) {
+                if (
+                  !hasExplicitIp &&
+                  !plugPromptUserIp &&
+                  !syncOpts.implicitPrime
+                ) {
+                  syncedConversationRef = null;
+                }
+                return { ok: false, j: x.j };
+              }
+              return { ok: true, j: x.j };
+            })
+            .catch(function (e) {
+              if (plugDebug) {
+                console.warn("[PLuG] sync-conversation-custom-fields failed", e);
+              }
+              if (
+                !hasExplicitIp &&
+                !plugPromptUserIp &&
+                !syncOpts.implicitPrime
+              ) {
+                syncedConversationRef = null;
+              }
+              return { ok: false, j: { detail: String(e) } };
+            });
+        }
+
+        function offerUserIpEntry(ref) {
+          if (!ref) {
+            return;
+          }
+          if (!plugPromptUserIp) {
+            postSyncConversationUserIp(ref);
+            return;
+          }
+          if (submittedUserIpByConv[ref]) {
+            return;
+          }
+          var panel = document.getElementById("plug-user-ip-panel");
+          if (!panel) {
+            postSyncConversationUserIp(ref);
+            return;
+          }
+          if (!panel.hidden && panelConversationRef === ref) {
+            return;
+          }
+          panelConversationRef = ref;
+          if (plugConversationSync && !serverIpPrimedForConv[ref]) {
+            serverIpPrimedForConv[ref] = true;
+            postSyncConversationUserIp(ref, undefined, { implicitPrime: true }).then(
+              function (x) {
+                if (plugDebug) {
+                  console.info(
+                    "[PLuG debug] server-IP prime sync",
+                    ref,
+                    x && x.ok ? "ok" : x
+                  );
+                }
+                if (!x || !x.ok) {
+                  delete serverIpPrimedForConv[ref];
+                }
+              }
+            );
+          }
+          var refEl = document.getElementById("plug-user-ip-ref");
+          if (refEl) {
+            refEl.textContent = "会話: " + ref;
+          }
+          var errEl = document.getElementById("plug-user-ip-err");
+          if (errEl) {
+            errEl.textContent = "";
+            errEl.setAttribute("hidden", "");
+          }
+          var inp = document.getElementById("plug-user-ip-input");
+          panel.removeAttribute("hidden");
+          panel.setAttribute("aria-hidden", "false");
+          fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" })
+            .then(function (r) {
+              if (r.ok) {
+                return r.json();
+              }
+              return null;
+            })
+            .then(function (d) {
+              if (inp && d && d.user_ip) {
+                inp.value = String(d.user_ip);
+              }
+            })
+            .catch(function () {});
+        }
+        function runPlugInit(useSessionToken, onReadyCallback) {
+          var initOpts = {
+            app_id: appId,
+            enable_default_launcher: true,
+            widget_alignment: "right",
+            spacing: { bottom: "20px", side: "20px" }
+          };
+          if (useSessionToken && sessionToken) {
+            initOpts.session_token = sessionToken;
+          }
+          if (plugSessionRecording) {
+            initOpts.session_recording_options = {
+              sessionReplay: {
+                captureMouseMove: false,
+                captureNetworkLogs: true,
+                captureConsoleLogs: true,
+                recordCrossOriginIframes: true
+              }
+            };
+            if (plugDebug) {
+              console.info("[PLuG debug] session_recording_options enabled");
+            }
+          }
+          if (plugAutoSend && !(plugMemberLoggedIn && sessionToken)) {
+            initOpts.fetchSessionToken = function () {
+              return fetch((window.APP_BASE || "") + "/api/plug/session-token", {
+                credentials: "include",
+                headers: { Accept: "application/json" }
+              }).then(function (r) {
+                if (!r.ok) {
+                  throw new Error("HTTP " + r.status);
+                }
+                return r.json();
+              }).then(function (d) {
+                return d && d.access_token ? d.access_token : null;
+              });
+            };
+          }
+          window.plugSDK.init(initOpts);
+          applySessionPropertiesFromUserContext("after_init").catch(function (e) {
+            console.warn("applySessionPropertiesFromUserContext", e);
+          });
+          window.plugSDK.onEvent(function (payload) {
+            if (plugDebug && payload) {
+              console.info("[PLuG debug] onEvent", payload.type, payload);
+            }
+            if (payload && payload.type === "ON_PLUG_WIDGET_READY") {
+              plugWidgetReady = true;
+              if (typeof onReadyCallback === "function") {
+                onReadyCallback();
+              }
+              flushPendingPlugConversation();
+              applySessionPropertiesFromUserContext("on_ready").catch(function (e) {
+                console.warn("applySessionPropertiesFromUserContext", e);
+              });
+            }
+            var ref = extractConversationRefFromPayload(payload);
+            if (plugDebug && payload && !ref) {
+              var et = String(payload.type || "");
+              if (
+                /CONVERSATION|MESSAGE|THREAD|CONV_|CHAT|SEND|doi|conversation/i.test(
+                  et
+                )
+              ) {
+                console.info(
+                  "[PLuG debug] onEvent: 会話 ID をペイロードから取れませんでした（必要なら DevRev のイベント形に合わせて extract を拡張）",
+                  et,
+                  payload
+                );
+              }
+            }
+            if (ref) {
+              if (plugDebug) {
+                console.info("[PLuG debug] extracted conversation ref", ref);
+              }
+              offerUserIpEntry(ref);
+            }
+          });
+        }
+        try {
+          if (sessionToken) {
+            var plugFallbackDone = false;
+            runPlugInit(true, function () {
+              plugWidgetReady = true;
+              flushPendingPlugConversation();
+            });
+            setTimeout(function () {
+              if (plugWidgetReady || plugFallbackDone) {
+                return;
+              }
+              plugFallbackDone = true;
+              if (plugMemberLoggedIn) {
+                console.warn(
+                  "[PLuG] session_token 付き init 後にウィジェットが ready になりませんでした（会員ログイン中のため匿名フォールバックは行いません）"
+                );
+                return;
+              }
+              console.warn(
+                "[PLuG] session_token 付き init 後にウィジェットが表示されませんでした。匿名モードで再試行します"
+              );
+              try {
+                runPlugInit(false);
+              } catch (fallbackErr) {
+                console.warn("PLuG anonymous fallback init failed", fallbackErr);
+              }
+            }, 8000);
+          } else {
+            runPlugInit(false);
+          }
+        } catch (e) {
+          if (sessionToken) {
+            if (plugMemberLoggedIn) {
+              console.warn("PLuG init failed with session_token (logged-in member; no anonymous retry)", e);
+            } else {
+              console.warn("PLuG init failed with session_token, retrying anonymous", e);
+              try {
+                runPlugInit(false);
+              } catch (e2) {
+                console.warn("PLuG init failed", e2);
+              }
+            }
+          } else {
+            console.warn("PLuG init failed", e);
+          }
+        }
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", tryInit);
+      } else {
+        tryInit();
+      }
+    })();
+  </script>
+  {% endif %}
+  <script>
+    (function () {
+      var debug =
+        typeof URLSearchParams !== "undefined" &&
+        new URLSearchParams(window.location.search).get("plug_debug") === "1";
+      if (!debug) return;
+      /** ページ末尾で即実行。fetch 完了ログはネットワーク応答後（通常は初回描画から数百 ms 以内）。 */
+      console.info("[helpsite] /api/client-ip: request start");
+      fetch((window.APP_BASE || "") + "/api/client-ip", { credentials: "include" })
+        .then(function (r) {
+          if (!r.ok) {
+            return r.text().then(function (t) {
+              throw new Error("HTTP " + r.status + " " + t.slice(0, 200));
+            });
+          }
+          return r.json();
+        })
+        .then(function (data) {
+          console.info("[helpsite] /api/client-ip: response", data);
+        })
+        .catch(function (err) {
+          console.warn("[helpsite] /api/client-ip: failed", err);
+        });
+    })();
+  </script>
+</body>
+</html>

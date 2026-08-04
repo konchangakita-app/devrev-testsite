@@ -1,0 +1,52 @@
+{% extends "admin_base.html" %}
+{% block title %}ユーザー管理 — KON{% endblock %}
+{% block admin_content %}
+<header class="admin-page-header">
+  <h1>ユーザー管理</h1>
+  <p class="muted">登録会員の一覧です（デモ・閲覧のみ）。</p>
+</header>
+
+<section class="card-panel">
+  <div class="admin-panel__toolbar">
+    <p class="muted admin-panel__meta">全 <strong>{{ users|length }}</strong> 件</p>
+  </div>
+  <div class="table-wrap">
+    <table class="admin-table" aria-label="ユーザー一覧">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>ユーザー名</th>
+          <th>メール</th>
+          <th>権限</th>
+          <th>DevRev</th>
+          <th>登録日</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td>
+          <td><strong>{{ u.username }}</strong></td>
+          <td>{{ u.email }}</td>
+          <td>
+            {% if u.is_admin %}
+            <span class="status-pill status-pill--admin">管理者</span>
+            {% else %}
+            <span class="status-pill status-pill--member">会員</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.devrev_revuser_id %}
+            <code class="code-sm">{{ u.devrev_revuser_id }}</code>
+            {% else %}
+            <span class="muted">未連携</span>
+            {% endif %}
+          </td>
+          <td>{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

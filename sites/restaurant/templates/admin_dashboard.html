@@ -1,0 +1,45 @@
+{% extends "admin_base.html" %}
+{% block title %}管理ダッシュボード — KON{% endblock %}
+{% block admin_content %}
+<header class="admin-page-header">
+  <h1>ダッシュボード</h1>
+  <p class="muted">KON デモサイトの管理画面です。管理者ログイン中のみ表示されます。</p>
+</header>
+
+<div class="stat-grid">
+  <div class="stat-card">
+    <p class="stat-card__label">登録ユーザー</p>
+    <p class="stat-card__value">{{ user_count }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">予約（全件）</p>
+    <p class="stat-card__value">{{ reservation_count }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">確定予約</p>
+    <p class="stat-card__value">{{ confirmed_count }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">本日の来店予定</p>
+    <p class="stat-card__value">{{ today_count }}</p>
+  </div>
+</div>
+
+<section class="card-panel">
+  <h2>クイックアクセス</h2>
+  <div class="quick-links">
+    <a href="{{ app_url('/admin/reservations') }}" class="quick-link-card">
+      <strong>予約管理</strong>
+      <span class="muted">一覧・状態変更</span>
+    </a>
+    <a href="{{ app_url('/admin/users') }}" class="quick-link-card">
+      <strong>ユーザー管理</strong>
+      <span class="muted">会員一覧の確認</span>
+    </a>
+    <a href="{{ app_url('/reserve') }}" class="quick-link-card">
+      <strong>予約フォーム</strong>
+      <span class="muted">お客様画面の確認</span>
+    </a>
+  </div>
+</section>
+{% endblock %}

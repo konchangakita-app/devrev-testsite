@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} — 社内向けヘルプ{% endblock %}
+
+{% block content %}
+<p><a href="{{ app_url('/') }}">← 記事一覧へ</a></p>
+
+<article>
+  <div class="article-meta">
+    <span class="pill">{{ article.category }}</span>
+    {% for tag in article.tags %}
+    <span class="pill">{{ tag }}</span>
+    {% endfor %}
+  </div>
+  <h1>{{ article.title }}</h1>
+  <p class="muted">{{ article.summary }}</p>
+  <div class="article-body">
+    {{ article.body_html | safe }}
+  </div>
+</article>
+{% endblock %}

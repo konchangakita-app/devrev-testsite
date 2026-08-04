@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}社内向けヘルプ — KON Group{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ app_url('/static/css/style.css') }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a href="{{ app_url('/') }}" class="logo">KON Group <span class="badge">社内</span></a>
+      <nav class="header-nav" aria-label="メインメニュー">
+        <a href="{{ app_url('/') }}">ホーム</a>
+        <a href="{{ app_url('/search') }}">検索</a>
+        <a href="/">ポータル</a>
+      </nav>
+      <nav class="header-actions">
+        {% if employee %}
+        <span class="btn btn-ghost">{{ employee.display_name }}（{{ employee.department }}）</span>
+        <button type="button" class="btn btn-secondary" id="btn-logout">ログアウト</button>
+        {% else %}
+        <button type="button" class="btn btn-primary" id="btn-open-login">社員ログイン</button>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <p>KON グループ社内向けヘルプ — DevRev PLuG（社員向け）デモ</p>
+  </footer>
+
+  {% if not employee %}
+  <div id="modal-login" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-panel" role="dialog">
+      <h2>社員ログイン</h2>
+      <p class="muted" style="font-size:0.88rem;margin:0 0 0.75rem;">デモ用アカウント: <code>tanaka.hanako</code> / <code>demo123</code></p>
+      <p class="modal-error" id="login-error" hidden></p>
+      <form id="form-login">
+        <label>ユーザー名 <input name="username" required autocomplete="username"></label>
+        <label>パスワード <input name="password" type="password" required autocomplete="current-password"></label>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-close-modal>キャンセル</button>
+          <button type="submit" class="btn btn-primary">ログイン</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <script>
+    window.__CSRF__ = {{ csrf_token | tojson }};
+    window.APP_BASE = {{ url_prefix | tojson }};
+    window.__EMPLOYEE__ = {% if employee %}{{ {"employee_id": employee.employee_id, "department": employee.department, "display_name": employee.display_name} | tojson }}{% else %}null{% endif %};
+  </script>
+  <script src="{{ app_url('/static/js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+
+  {% if plug_enabled and plug_app_id %}
+  <script src="https://plug-platform.devrev.ai/static/plug.js"></script>
+  <script>
+    (function () {
+      var appId = {{ plug_app_id | tojson }};
+      var sessionToken = {{ plug_session_token | tojson }};
+      var plugSessionRecording = {{ plug_session_recording | default(false) | tojson }};
+      var plugAutoSend = {{ plug_auto_send | default(false) | tojson }};
+      var plugWidgetReady = false;
+      var pendingPlugConversation = null;
+
+      function applyPlugPromptSessionProperties(text) {
+        if (!text) return;
+        try {
+          window.plugSDK.addSessionProperties({
+            plug_prompt_message: text.slice(0, 500),
+            plug_prompt_source: "plug-prompt-choices"
+          });
+        } catch (propErr) {
+          console.warn("PLuG addSessionProperties (prompt) failed", propErr);
+        }
+      }
+
+      function openPlugConversationPrefill(text) {
+        if (!text) {
+          window.plugSDK.toggleWidget(true);
+          return true;
+        }
+        window.plugSDK.toggleWidget(true, "create_conversation", { startConversationContent: text });
+        applyPlugPromptSessionProperties(text);
+        return true;
+      }
+
+      function sendPlugConversationMessage(text) {
+        return fetch((window.APP_BASE || "") + "/api/plug/create-conversation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ csrf_token: window.__CSRF__ || "", message: text })
+        }).then(function (r) {
+          return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+        });
+      }
+
+      function openPlugConversationView(conversationId, text) {
+        window.plugSDK.toggleWidget(true, "conversations_view", { id: conversationId });
+        applyPlugPromptSessionProperties(text);
+      }
+
+      function openPlugConversation(content, options) {
+        options = options || {};
+        var autoSend = options.autoSend !== false && plugAutoSend;
+        var text = content != null ? String(content).trim() : "";
+        if (!window.plugSDK || typeof window.plugSDK.toggleWidget !== "function") {
+          if (text) pendingPlugConversation = { text: text, options: options };
+          return false;
+        }
+        if (!plugWidgetReady) {
+          if (text) pendingPlugConversation = { text: text, options: options };
+          return false;
+        }
+        if (autoSend && text) {
+          sendPlugConversationMessage(text).then(function (x) {
+            var convRef = (x.j && (x.j.conversation_don || x.j.conversation_id)) || "";
+            if (x.ok && convRef) {
+              openPlugConversationView(convRef, text);
+              return;
+            }
+            openPlugConversationPrefill(text);
+          }).catch(function () { openPlugConversationPrefill(text); });
+          pendingPlugConversation = null;
+          return true;
+        }
+        try {
+          openPlugConversationPrefill(text);
+          pendingPlugConversation = null;
+          return true;
+        } catch (err) {
+          console.warn("PLuG openPlugConversation failed", err);
+          return false;
+        }
+      }
+
+      function flushPendingPlugConversation() {
+        if (!pendingPlugConversation) return;
+        var queued = pendingPlugConversation;
+        pendingPlugConversation = null;
+        openPlugConversation(queued.text, queued.options || {});
+      }
+
+      window.openPlugConversation = openPlugConversation;
+
+      document.addEventListener("click", function (e) {
+        var btn = e.target.closest(".plug-prompt");
+        if (!btn) return;
+        openPlugConversation(btn.getAttribute("data-prompt") || "", {
+          autoSend: btn.getAttribute("data-auto-send") !== "false"
+        });
+      });
+
+      function tryInit() {
+        if (!window.plugSDK) {
+          setTimeout(tryInit, 100);
+          return;
+        }
+
+        function defaultProps() {
+          var props = {
+            demo_source: "employee-helpsite",
+            site: "employee"
+          };
+          if (window.__EMPLOYEE__) {
+            props.employee_id = window.__EMPLOYEE__.employee_id;
+            props.department = window.__EMPLOYEE__.department;
+            props.display_name = window.__EMPLOYEE__.display_name;
+          }
+          return props;
+        }
+
+        async function applySessionProperties(phase) {
+          try {
+            var res = await fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" });
+            var data = res.ok ? await res.json() : {};
+            var props = defaultProps();
+            if (data.employee_id) props.employee_id = String(data.employee_id);
+            if (data.department) props.department = String(data.department);
+            if (data.display_name) props.display_name = String(data.display_name);
+            if (data.demo_source) props.demo_source = String(data.demo_source);
+            if (data.site) props.site = String(data.site);
+            window.plugSDK.addSessionProperties(props);
+          } catch (e) {
+            window.plugSDK.addSessionProperties(defaultProps());
+          }
+        }
+
+        function runPlugInit(useSessionToken) {
+          var initOpts = {
+            app_id: appId,
+            enable_default_launcher: true,
+            widget_alignment: "right",
+            spacing: { bottom: "20px", side: "20px" }
+          };
+          if (useSessionToken && sessionToken) {
+            initOpts.session_token = sessionToken;
+          }
+          if (plugSessionRecording) {
+            initOpts.session_recording_options = {
+              sessionReplay: {
+                captureMouseMove: false,
+                captureNetworkLogs: true,
+                captureConsoleLogs: true,
+                recordCrossOriginIframes: true
+              }
+            };
+          }
+          if (plugAutoSend) {
+            initOpts.fetchSessionToken = function () {
+              return fetch((window.APP_BASE || "") + "/api/plug/session-token", {
+                credentials: "include",
+                headers: { Accept: "application/json" }
+              }).then(function (r) {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.json();
+              }).then(function (d) { return d && d.access_token ? d.access_token : null; });
+            };
+          }
+          window.plugSDK.init(initOpts);
+          applySessionProperties("after_init");
+          window.plugSDK.onEvent(function (payload) {
+            if (payload && payload.type === "ON_PLUG_WIDGET_READY") {
+              plugWidgetReady = true;
+              flushPendingPlugConversation();
+              applySessionProperties("on_ready");
+            }
+          });
+        }
+
+        try {
+          if (sessionToken) {
+            runPlugInit(true);
+          } else {
+            runPlugInit(false);
+          }
+        } catch (e) {
+          console.warn("PLuG init failed", e);
+          try { runPlugInit(false); } catch (e2) { console.warn("PLuG anonymous init failed", e2); }
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", tryInit);
+      } else {
+        tryInit();
+      }
+    })();
+  </script>
+  {% endif %}
+</body>
+</html>

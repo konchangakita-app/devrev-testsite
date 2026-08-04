@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}会員ページ — KON{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>会員ページ</h1>
+  <p class="muted">ようこそ、<strong>{{ user.username }}</strong> さん</p>
+</section>
+
+<section class="card-panel member-card">
+  <div class="member-card__grid">
+    <div>
+      <p class="member-card__label">メールアドレス</p>
+      <p>{{ user.email }}</p>
+    </div>
+    <div>
+      <p class="member-card__label">会員 ID</p>
+      <p><code>mbr:{{ user.id }}</code></p>
+    </div>
+    <div>
+      <p class="member-card__label">DevRev user_ref</p>
+      {% if user.email and (plug_user_ref_mode | default('member_id')) == 'email' %}
+      <p><code class="code-sm">{{ user.email }}</code></p>
+      {% else %}
+      <p><code>mbr:{{ user.id }}</code></p>
+      {% endif %}
+    </div>
+    <div>
+      <p class="member-card__label">DevRev RevUser DON</p>
+      {% if user.devrev_revuser_id %}
+      <p><code class="code-sm">{{ user.devrev_revuser_id }}</code></p>
+      {% else %}
+      <p class="muted">未連携（ログイン時に AAT が必要）</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="member-card__actions">
+    <a href="{{ app_url('/reserve') }}" class="btn btn-primary">新規予約</a>
+    <a href="{{ app_url('/member/reservations') }}" class="btn btn-secondary">マイ予約</a>
+    <a href="{{ app_url('/contact') }}" class="btn btn-ghost">お問い合わせ</a>
+    <a href="{{ app_url('/') }}" class="btn btn-ghost">トップへ</a>
+  </div>
+</section>
+
+{% if plug_conversation_sync %}
+<details class="card-panel dev-panel">
+  <summary>DevRev 検証ツール（開発者向け）</summary>
+  <p class="muted">
+    会話 CF <code>{{ plug_conversation_field_api_name }}</code> へ IP を直接書き込みます。
+  </p>
+  <form id="form-direct-conv-user-ip" class="contact-form">
+    <div class="contact-form__row">
+      <label for="direct-conversation-id">会話 ID</label>
+      <input id="direct-conversation-id" name="conversation_id" type="text" required placeholder="CONV-81">
+    </div>
+    <div class="contact-form__row">
+      <label for="direct-user-ip">IP アドレス</label>
+      <input id="direct-user-ip" name="user_ip" type="text" required placeholder="203.0.113.1">
+    </div>
+    <button type="submit" class="btn btn-primary">DevRev に反映</button>
+  </form>
+  <p id="direct-conv-user-ip-result" class="muted" aria-live="polite"></p>
+</details>
+{% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+  (function () {
+    var form = document.getElementById("form-direct-conv-user-ip");
+    if (!form) return;
+    var out = document.getElementById("direct-conv-user-ip-result");
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var cid = document.getElementById("direct-conversation-id").value.trim();
+      var ip = document.getElementById("direct-user-ip").value.trim();
+      if (!cid || !ip) return;
+      if (out) out.textContent = "送信中…";
+      fetch((window.APP_BASE || "") + "/api/plug/sync-conversation-custom-fields", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ csrf_token: window.__CSRF__ || "", conversation_id: cid, user_ip: ip }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          if (!out) return;
+          if (x.ok && x.j && x.j.ok) { out.textContent = "成功: " + (x.j.user_ip || ip); return; }
+          out.textContent = "失敗: " + JSON.stringify(x.j && x.j.detail || x.j).slice(0, 400);
+        })
+        .catch(function (err) { if (out) out.textContent = "エラー: " + err.message; });
+    });
+  })();
+</script>
+{% endblock %}

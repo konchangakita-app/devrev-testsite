@@ -1,0 +1,88 @@
+{% extends "admin_base.html" %}
+{% block title %}予約管理 — KON{% endblock %}
+{% block admin_content %}
+<header class="admin-page-header">
+  <h1>予約管理</h1>
+  <p class="muted">サンプルデータとフォーム送信分の一覧（ハリボテ）。</p>
+</header>
+
+<section class="card-panel">
+  <div class="admin-panel__toolbar">
+    <p class="muted admin-panel__meta">全 <strong>{{ reservations|length }}</strong> 件</p>
+    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-reservations">更新</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="admin-table" aria-label="予約一覧">
+      <thead>
+        <tr>
+          <th>予約番号</th>
+          <th>来店日</th>
+          <th>時間</th>
+          <th>お名前</th>
+          <th>人数</th>
+          <th>コース</th>
+          <th>席種</th>
+          <th>状態</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+        <tr data-id="{{ r.id }}">
+          <td><code class="code-sm">{{ r.id }}</code></td>
+          <td>{{ r.visit_date }}</td>
+          <td>{{ r.time_slot }}<br><span class="muted">{{ r.meal_label }}</span></td>
+          <td>{{ r.guest_name }}<br><span class="muted">{{ r.guest_email }}</span></td>
+          <td>{{ r.party_size }}名</td>
+          <td>{{ r.course_label }}</td>
+          <td>{{ r.seat_label }}</td>
+          <td><span class="status-pill status-pill--{{ r.status }}">{{ r.status_label }}</span></td>
+          <td class="admin-table__actions">
+            {% if r.status == 'confirmed' %}
+            <button type="button" class="btn btn-ghost btn-sm" data-action="visited" data-id="{{ r.id }}">来店済</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="cancelled" data-id="{{ r.id }}">取消</button>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted admin-panel__note">サーバ再起動後、フォームからの追加分が消える場合があります。</p>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    function postStatus(id, status) {
+      return fetch((window.APP_BASE || "") + "/api/admin/reservations/" + encodeURIComponent(id) + "/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ csrf_token: window.__CSRF__ || "", status: status }),
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      });
+    }
+    document.querySelectorAll("[data-action]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-id");
+        var status = btn.getAttribute("data-action");
+        if (!id || !status) return;
+        btn.disabled = true;
+        postStatus(id, status).then(function (x) {
+          if (x.ok && x.j && x.j.ok) { window.location.reload(); return; }
+          alert((x.j && x.j.detail) || "更新に失敗しました");
+          btn.disabled = false;
+        }).catch(function () { alert("通信エラー"); btn.disabled = false; });
+      });
+    });
+    var refresh = document.getElementById("btn-refresh-reservations");
+    if (refresh) refresh.addEventListener("click", function () { window.location.reload(); });
+  })();
+</script>
+{% endblock %}

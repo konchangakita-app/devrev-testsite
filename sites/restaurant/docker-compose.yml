@@ -1,0 +1,24 @@
+# 非推奨: リポジトリルートの docker-compose.yml を使ってください。
+# このファイルは旧 sample-helpsite 単体起動用です。ルート起動では / がポータル、/restaurant/ がレストランです。
+services:
+  helpsite:
+    build: .
+    container_name: sample_helpsite_legacy
+    # ngrok は通常 `http 5020`。手元で uvicorn を同時に動かす場合は uvicorn を 5021 などにする
+    ports:
+      - "5020:5020"
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DEVREV_PLUG_APP_ID=${DEVREV_PLUG_APP_ID:-}
+      - DEVREV_PLUG_ENABLE_SESSION_RECORDING=${DEVREV_PLUG_ENABLE_SESSION_RECORDING:-false}
+      - DEVREV_PLUG_PROMPT_USER_IP=${DEVREV_PLUG_PROMPT_USER_IP:-true}
+      - DEVREV_APPLICATION_ACCESS_TOKEN=${DEVREV_APPLICATION_ACCESS_TOKEN:-}
+      - DEVREV_PAT=${DEVREV_PAT:-}
+      # conversations.update が 400 のとき: SEND_SCHEMA_SPEC=false または TENANT_FRAGMENT=false を試す
+      - DEVREV_CONVERSATION_UPDATE_SEND_SCHEMA_SPEC=${DEVREV_CONVERSATION_UPDATE_SEND_SCHEMA_SPEC:-true}
+      - DEVREV_CONVERSATION_UPDATE_TENANT_FRAGMENT=${DEVREV_CONVERSATION_UPDATE_TENANT_FRAGMENT:-true}
+      - DEVREV_CONVERSATION_UPDATE_VALIDATE_REQUIRED_FIELDS=${DEVREV_CONVERSATION_UPDATE_VALIDATE_REQUIRED_FIELDS:-false}
+      - DEVREV_CONVERSATION_CUSTOM_FIELD_USER_IP=${DEVREV_CONVERSATION_CUSTOM_FIELD_USER_IP:-tnt__user_ip}
+      - DEVREV_ACCOUNT_REF=${DEVREV_ACCOUNT_REF:-}
+      - DEVREV_WORKSPACE_REF=${DEVREV_WORKSPACE_REF:-}
+    restart: unless-stopped

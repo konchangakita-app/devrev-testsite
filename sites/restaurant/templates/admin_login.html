@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block site_header %}{% endblock %}
+{% block title %}管理者ログイン — KON{% endblock %}
+{% block body_class %}page-admin-login{% endblock %}
+{% block content %}
+<section class="admin-login">
+  <div class="admin-login__card">
+    <p class="admin-login__eyebrow">KON Admin</p>
+    <h1>管理者ログイン</h1>
+    <p class="muted">ユーザー管理・全予約の管理はこちらから。一般会員のログインとは別です。</p>
+
+    <p id="admin-login-error" class="contact-error" hidden role="alert"></p>
+
+    <form id="form-admin-login" class="contact-form">
+      <div class="contact-form__row">
+        <label for="admin-username">管理者ユーザー名</label>
+        <input id="admin-username" name="username" type="text" required autocomplete="username">
+      </div>
+      <div class="contact-form__row">
+        <label for="admin-password">パスワード</label>
+        <input id="admin-password" name="password" type="password" required autocomplete="current-password">
+      </div>
+      <div class="contact-form__actions" style="border-top:none;padding-top:0;margin-top:0.5rem;">
+        <a href="{{ app_url('/') }}" class="btn btn-ghost">サイトへ戻る</a>
+        <button type="submit" class="btn btn-primary">ログイン</button>
+      </div>
+    </form>
+
+    <p class="muted admin-login__hint">
+      デモ管理者: ユーザー名 <code>konadmin</code> / パスワード <code>konadmin1234</code>
+    </p>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var form = document.getElementById("form-admin-login");
+    if (!form) return;
+    var err = document.getElementById("admin-login-error");
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (err) err.hidden = true;
+      var fd = new FormData(form);
+      fetch((window.APP_BASE || "") + "/auth/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          csrf_token: window.__CSRF__ || "",
+          username: fd.get("username"),
+          password: fd.get("password"),
+        }),
+      })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+        .then(function (x) {
+          if (x.ok && x.j && x.j.redirect) {
+            window.location.href = x.j.redirect;
+            return;
+          }
+          if (err) {
+            err.textContent = x.j.detail || "ログインに失敗しました";
+            err.hidden = false;
+          }
+        })
+        .catch(function () {
+          if (err) { err.textContent = "通信エラー"; err.hidden = false; }
+        });
+    });
+  })();
+</script>
+{% endblock %}

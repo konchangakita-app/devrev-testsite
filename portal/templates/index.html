@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KON Group — DevRev サンプルサイト</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/portal-static/css/portal.css">
+</head>
+<body>
+  <header class="portal-header">
+    <div class="portal-header__inner">
+      <h1>KON Group</h1>
+      <p class="portal-header__lead">DevRev サンプルサイト — 架空の多事業ホールディングス</p>
+    </div>
+  </header>
+
+  <main class="portal-main">
+    <p class="portal-intro">
+      レストラン運営・IT SIer・小売など事業別の顧客向けサイトと、グループ共通の社内向けヘルプをデモします。
+      業務データの正（SoT）は各事業システム、DevRev は顧客接点・サポート・CRM・ナレッジのハブという構成です。
+    </p>
+
+    <div class="portal-grid">
+      {% for site in sites %}
+      <article class="portal-card portal-card--{{ site.status }}">
+        <div class="portal-card__meta">
+          <span class="portal-card__badge">{{ site.badge }}</span>
+          {% if site.status == 'live' %}
+          <span class="portal-card__status portal-card__status--live">公開中</span>
+          {% elif site.status == 'coming_soon' %}
+          <span class="portal-card__status portal-card__status--soon">準備中</span>
+          {% else %}
+          <span class="portal-card__status portal-card__status--planned">計画中</span>
+          {% endif %}
+        </div>
+        <h2>{{ site.title }}</h2>
+        <p>{{ site.description }}</p>
+        {% if site.path and site.status == 'live' %}
+        <a href="{{ site.path }}" class="portal-card__link">サイトへ →</a>
+        {% elif site.path and site.status == 'coming_soon' %}
+        <a href="{{ site.path }}" class="portal-card__link portal-card__link--muted">プレビュー（準備中）→</a>
+        {% else %}
+        <span class="portal-card__link portal-card__link--disabled">Coming soon</span>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </main>
+
+  <footer class="portal-footer">
+    <p>設計方針: <code>docs/DESIGN.md</code></p>
+  </footer>
+</body>
+</html>

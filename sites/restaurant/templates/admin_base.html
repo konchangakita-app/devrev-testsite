@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block site_header %}{% endblock %}
+{% block site_footer %}{% endblock %}
+{% block body_class %}page-admin{% endblock %}
+{% block main_class %}main main--admin{% endblock %}
+{% block content %}
+<div class="admin-shell">
+  <aside class="admin-sidebar" aria-label="管理メニュー">
+    <div class="admin-sidebar__brand">
+      <span class="admin-sidebar__label">KON 管理</span>
+      <span class="admin-sidebar__user">{{ admin_user.username }}</span>
+    </div>
+    <nav class="admin-sidebar__nav">
+      <a href="{{ app_url('/admin') }}" class="admin-nav-link{% if admin_active == 'dashboard' %} is-active{% endif %}">ダッシュボード</a>
+      <a href="{{ app_url('/admin/reservations') }}" class="admin-nav-link{% if admin_active == 'reservations' %} is-active{% endif %}">予約管理</a>
+      <a href="{{ app_url('/admin/users') }}" class="admin-nav-link{% if admin_active == 'users' %} is-active{% endif %}">ユーザー管理</a>
+    </nav>
+    <div class="admin-sidebar__footer">
+      <button type="button" class="admin-nav-link admin-nav-link--muted" id="btn-admin-logout" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;">ログアウト</button>
+      <a href="{{ app_url('/') }}" class="admin-nav-link admin-nav-link--muted">サイトを表示</a>
+    </div>
+  </aside>
+  <div class="admin-content">
+    {% block admin_content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var btn = document.getElementById("btn-admin-logout");
+    if (!btn) return;
+    btn.addEventListener("click", function () {
+      fetch((window.APP_BASE || "") + "/auth/admin/logout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ csrf_token: window.__CSRF__ || "" }),
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (j) { window.location.href = (j && j.redirect) || ((window.APP_BASE || "") + "/admin/login"); })
+        .catch(function () { window.location.href = (window.APP_BASE || "") + "/admin/login"; });
+    });
+  })();
+</script>
+{% endblock %}

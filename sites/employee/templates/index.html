@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}社内向けヘルプ — KON Group{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>社内向けヘルプ</h1>
+  <p>就業規則・経費精算・IT サポートなど、KON グループ従業員向けのナレッジです。解決しない場合は右下の PLuG からお問い合わせください。</p>
+</section>
+
+<form class="search-bar" action="{{ app_url('/search') }}" method="get" role="search">
+  <input type="search" name="q" placeholder="キーワードで検索（例: 経費、VPN）" aria-label="記事を検索">
+  <button type="submit" class="btn btn-primary">検索</button>
+</form>
+
+<div class="card-grid">
+  {% for article in articles %}
+  <article class="article-card">
+    <div class="article-meta">
+      <span class="pill">{{ article.category }}</span>
+      {% for tag in article.tags %}
+      <span class="pill">{{ tag }}</span>
+      {% endfor %}
+    </div>
+    <h2><a href="{{ app_url('/articles/' ~ article.slug) }}">{{ article.title }}</a></h2>
+    <p>{{ article.summary }}</p>
+  </article>
+  {% endfor %}
+</div>
+
+<div class="demo-hint">
+  <strong>デモ用社員アカウント:</strong> ユーザー名 <code>tanaka.hanako</code>、パスワード <code>demo123</code>（経理部）。ログインすると PLuG に社員 ID・部署が連携されます。
+</div>
+
+{% set plug_prompt_heading = 'よくある相談（チャット）' %}
+{% set plug_prompt_lead = '記事で解決しない場合は、下の質問を選んで PLuG から人事・経理・IT 部へ相談できます。' %}
+{% set plug_prompts = [
+  {
+    'label': '経費精算',
+    'description': '申請・承認の滞り',
+    'message': '経費精算の申請が承認待ちのまま止まっています。確認をお願いします。'
+  },
+  {
+    'label': 'リモートワーク',
+    'description': 'VPN・端末・申請手続き',
+    'message': 'リモートワークの VPN 接続方法と、申請手続きについて教えてください。'
+  },
+  {
+    'label': 'IT サポート',
+    'description': 'PC・メール・システム障害',
+    'message': 'PC のログインができません。IT 部への連絡方法を教えてください。'
+  },
+  {
+    'label': '就業規則',
+    'description': '休暇・勤務時間の解釈',
+    'message': '有給休暇の取得ルールについて、就業規則の解釈を確認したいです。'
+  }
+] %}
+{% include '_plug_prompt_choices.html' %}
+{% endblock %}

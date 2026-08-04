@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}トップ — KON{% endblock %}
+{% block content %}
+<section id="top" class="hero-banner">
+  <div class="hero-banner__inner">
+    <p class="hero-banner__eyebrow">Fictional Dining — Demo Only</p>
+    <h1>KON</h1>
+    <p class="lead">
+      架空のコース料理レストラン。会員登録でオンライン予約・マイ予約の確認・お問い合わせができます。
+    </p>
+    <div class="hero-actions">
+      {% if user %}
+      <a href="{{ app_url('/reserve') }}" class="btn btn-primary">新規予約</a>
+      <a href="{{ app_url('/member/reservations') }}" class="btn btn-secondary">マイ予約</a>
+      {% else %}
+      <button type="button" class="btn btn-primary" id="btn-open-register-hero">会員登録する</button>
+      <button type="button" class="btn btn-secondary" id="btn-open-login-hero">ログイン</button>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section id="about" class="feature-grid">
+  <article class="feature-card">
+    <h2>新規予約</h2>
+    <p>会員ログイン後、日時・コースを選んで予約できます（デモ）。</p>
+  </article>
+  <article class="feature-card">
+    <h2>マイ予約</h2>
+    <p>ご自身の予約一覧の確認・キャンセル（デモ）が可能です。</p>
+  </article>
+  <article class="feature-card">
+    <h2>お問い合わせ</h2>
+    <p>フォームからご質問をお送りいただけます。</p>
+  </article>
+</section>
+
+<section id="guide-faq" class="card-panel faq-panel">
+  <h2>よくある質問（FAQ）</h2>
+  <p class="muted faq-panel__lead">KON のご利用方法と、このデモサイトの仕組みについてまとめました。</p>
+
+  <h3 class="faq-category">会員登録・ログイン</h3>
+  <dl class="faq-list">
+    <dt>会員登録は無料ですか？</dt>
+    <dd>はい、無料です。画面上部の「会員登録」からユーザー名・メールアドレス・パスワードを設定してください。</dd>
+    <dt>ログインできません</dt>
+    <dd>ユーザー名とパスワードをご確認ください。デモ用の会員アカウントは <code>demo</code> / <code>demo1234</code> です。</dd>
+    <dt>会員と管理者の違いは？</dt>
+    <dd>会員は予約・マイ予約・お問い合わせができます。管理者はユーザー管理と全予約の管理ができ、<a href="{{ app_url('/admin/login') }}">別のログイン画面</a>から入ります。</dd>
+    <dt>管理者アカウントは？</dt>
+    <dd><code>konadmin</code> / <code>konadmin1234</code> で <a href="{{ app_url('/admin/login') }}">管理者ログイン</a> してください。一般会員のログインでは管理画面には入れません。</dd>
+  </dl>
+
+  <h3 class="faq-category">予約について</h3>
+  <dl class="faq-list">
+    <dt>予約にはログインが必要ですか？</dt>
+    <dd>はい。会員ログイン後、<a href="{{ app_url('/reserve') }}">新規予約</a> ページからお申し込みいただけます。</dd>
+    <dt>予約の流れを教えてください</dt>
+    <dd>来店日と時間帯を選び、人数・席種・コースを指定して送信します。完了すると予約番号（<code>KON-YYYYMMDD-####</code>）が表示されます。</dd>
+    <dt>予約内容の確認・キャンセルはできますか？</dt>
+    <dd><a href="{{ app_url('/member/reservations') }}">マイ予約</a> ページでご自身の予約のみ確認できます。確定中の予約はキャンセル（デモ）も可能です。</dd>
+    <dt>何人から予約できますか？</dt>
+    <dd>2名様〜8名様でお受けしています（デモ上の設定）。個室は4名様まで、追加料金のイメージで表示しています。</dd>
+    <dt>コースの種類は？</dt>
+    <dd>KON スタンダード（¥6,800）、KON 季節（¥9,800）、シェフおまかせ（¥15,000）の3種類です。いずれも架空のメニューです。</dd>
+    <dt>予約なしで入店できますか？</dt>
+    <dd>このデモサイトではオンライン予約のみを想定しています。実店舗は存在しません。</dd>
+  </dl>
+
+  <h3 class="faq-category">お問い合わせ</h3>
+  <dl class="faq-list">
+    <dt>お問い合わせ方法は？</dt>
+    <dd><a href="{{ app_url('/contact') }}">お問い合わせフォーム</a> からご送信ください。会員ログイン中はお名前とメールが自動入力されます。</dd>
+    <dt>チャットでの問い合わせはできますか？</dt>
+    <dd>画面右下のチャットウィジェット（DevRev PLuG が有効な場合）からもデモ体験ができます。</dd>
+    <dt>返信はありますか？</dt>
+    <dd>デモのため、フォーム送信後のメール返信は行いません。送信内容はサーバログに記録されるのみです。</dd>
+  </dl>
+
+  <h3 class="faq-category">店舗情報（架空）</h3>
+  <dl class="faq-list">
+    <dt>KON は実在のレストランですか？</dt>
+    <dd>いいえ。<strong>KON</strong> は DevRev PLuG 連携などを検証するための架空店舗名です。</dd>
+    <dt>営業時間・定休日は？</dt>
+    <dd>ランチ 11:30〜14:00、ディナー 17:30〜22:00。定休日は火曜日（すべてデモ用の設定値です）。</dd>
+    <dt>アレルギー対応は？</dt>
+    <dd>予約時の備考欄またはお問い合わせフォームにご記入ください。実際の調理・対応は行われません。</dd>
+    <dt>キャンセルポリシーは？</dt>
+    <dd>デモ上、マイ予約から確定予約をキャンセルできます。管理者は管理画面から来店済・取消の状態変更が可能です。</dd>
+  </dl>
+
+  <h3 class="faq-category">このデモサイトについて</h3>
+  <dl class="faq-list">
+    <dt>予約は本当に入りますか？</dt>
+    <dd>いいえ。ハリボテのフォームで、画面表示と管理者一覧への追加のみ行います。メール通知もありません。</dd>
+    <dt>送信した予約が消えることがあります</dt>
+    <dd>サーバ（コンテナ）を再起動すると、フォームから追加した予約は消える場合があります。サンプルデータは再起動後も残ります。</dd>
+    <dt>DevRev 連携とは？</dt>
+    <dd>会員ログイン時に RevUser トークンを発行し、PLuG チャットや会話のカスタムフィールド（user_ip 等）の検証に使えるデモ環境です。詳細は開発者向けドキュメントを参照してください。</dd>
+  </dl>
+</section>
+
+<section id="guide-contact" class="card-panel card-panel--cta">
+  <h2>お問い合わせ</h2>
+  <a href="{{ app_url('/contact') }}" class="btn btn-primary">お問い合わせフォーム</a>
+</section>
+
+{% set plug_prompt_heading = 'チャットで相談（デモ）' %}
+{% set plug_prompt_lead = 'よくあるご質問を選ぶと PLuG チャットが開き、選択した内容がエージェントに送信されます。' %}
+{% set plug_prompts = [
+  {
+    'label': '予約の変更・キャンセル',
+    'description': '予約番号がわからない場合もこちら',
+    'message': '予約の変更・キャンセルについて教えてください。予約番号はまだお持ちではありません。'
+  },
+  {
+    'label': 'アレルギー対応',
+    'description': '事前相談・メニュー確認',
+    'message': 'アレルギー対応は可能でしょうか？来店前に相談したいです。'
+  },
+  {
+    'label': '貸切・宴会の相談',
+    'description': '人数・日程のご相談',
+    'message': '貸切・宴会の相談をしたいです。20名程度、来月の土曜夜を想定しています。'
+  },
+  {
+    'label': 'コース・料金',
+    'description': 'メニュー内容の確認',
+    'message': 'コースメニューの内容と料金を教えてください。'
+  }
+] %}
+{% include '_plug_prompt_choices.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var reg = document.getElementById("btn-open-register-hero");
+    if (reg) reg.addEventListener("click", function () {
+      var b = document.getElementById("btn-open-register");
+      if (b) b.click();
+    });
+    var login = document.getElementById("btn-open-login-hero");
+    if (login) login.addEventListener("click", function () {
+      var b = document.getElementById("btn-open-login");
+      if (b) b.click();
+    });
+  })();
+</script>
+{% endblock %}

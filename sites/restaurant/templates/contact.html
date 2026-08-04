@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}お問い合わせ — KON{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>お問い合わせ</h1>
+  <p class="lead">KON に関するご質問はフォームよりお送りください（デモ・返信なし）。</p>
+</section>
+
+<nav class="breadcrumb" aria-label="パンくず">
+  <a href="{{ app_url('/') }}">HOME</a>
+  <span class="sep">|</span>
+  <span class="muted">お問い合わせ</span>
+</nav>
+
+<section class="contact-panel">
+  <h2>お問い合わせフォーム</h2>
+  <p class="muted contact-note">
+    <span aria-hidden="true">*</span> は必須項目です。ログイン中の場合、お名前とメールアドレスは自動入力されます。
+  </p>
+
+  <p id="contact-success" class="contact-success" hidden role="status">
+    お問い合わせを受け付けました。ご入力いただいたメールアドレス宛に確認メールをお送りしました（デモのため実際には送信されません）。
+  </p>
+  <p id="contact-error" class="contact-error" hidden role="alert"></p>
+
+  <form id="form-contact" class="contact-form" novalidate>
+    <div class="contact-form__row">
+      <label for="contact-name">お名前 <span class="required">*</span></label>
+      <input
+        id="contact-name"
+        name="name"
+        type="text"
+        required
+        maxlength="80"
+        autocomplete="name"
+        value="{% if user %}{{ user.username }}{% endif %}"
+        placeholder="山田 太郎"
+      >
+    </div>
+
+    <div class="contact-form__row">
+      <label for="contact-email">メールアドレス <span class="required">*</span></label>
+      <input
+        id="contact-email"
+        name="email"
+        type="email"
+        required
+        maxlength="120"
+        autocomplete="email"
+        value="{% if user %}{{ user.email }}{% endif %}"
+        placeholder="example@email.com"
+      >
+    </div>
+
+    <div class="contact-form__row">
+      <label for="contact-phone">電話番号</label>
+      <input
+        id="contact-phone"
+        name="phone"
+        type="tel"
+        maxlength="20"
+        autocomplete="tel"
+        placeholder="03-1234-5678（任意）"
+      >
+    </div>
+
+    <div class="contact-form__row">
+      <label for="contact-category">お問い合わせ種別 <span class="required">*</span></label>
+      <select id="contact-category" name="category" required>
+        <option value="">選択してください</option>
+        <option value="account">ログイン・会員登録について</option>
+        <option value="service">サービスの使い方について</option>
+        <option value="billing">料金・お支払いについて</option>
+        <option value="bug">不具合・障害について</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+
+    <div class="contact-form__row">
+      <label for="contact-subject">件名 <span class="required">*</span></label>
+      <input
+        id="contact-subject"
+        name="subject"
+        type="text"
+        required
+        maxlength="120"
+        placeholder="お問い合わせの概要をご記入ください"
+      >
+    </div>
+
+    <div class="contact-form__row">
+      <label for="contact-message">お問い合わせ内容 <span class="required">*</span></label>
+      <textarea
+        id="contact-message"
+        name="message"
+        required
+        maxlength="2000"
+        rows="6"
+        placeholder="できるだけ詳しくご記入ください"
+      ></textarea>
+      <p class="contact-form__hint muted">最大 2,000 文字</p>
+    </div>
+
+    <div class="contact-form__row contact-form__row--checkbox">
+      <label class="contact-checkbox">
+        <input id="contact-agree" name="agree_privacy" type="checkbox" required value="1">
+        <span><a href="#" onclick="return false;">プライバシーポリシー</a>に同意する <span class="required">*</span></span>
+      </label>
+    </div>
+
+    <div class="contact-form__actions">
+      <a href="{{ app_url('/') }}" class="btn btn-ghost">キャンセル</a>
+      <button type="submit" class="btn btn-primary" id="contact-submit">送信する</button>
+    </div>
+  </form>
+</section>
+
+<section class="card-panel contact-faq">
+  <h2>送信前によくあるご質問</h2>
+  <dl class="contact-faq__list">
+    <dt>会員登録は必要ですか？</dt>
+    <dd>不要です。未ログインでもフォームから送信できます。ログイン中はお名前とメールが自動入力されます。</dd>
+    <dt>返信はありますか？</dt>
+    <dd>デモサイトのため、実際のメール返信は行いません。</dd>
+    <dt>予約の変更・キャンセルはこちらからできますか？</dt>
+    <dd>予約の変更はお問い合わせフォームからご連絡ください（デモ）。キャンセルは会員の方は <a href="{{ app_url('/member/reservations') }}">マイ予約</a> から可能です。</dd>
+    <dt>チャットでの問い合わせはできますか？</dt>
+    <dd>画面右下のチャットウィジェット（DevRev PLuG 有効時）もご利用いただけます。</dd>
+    <dt>個人情報の取り扱いは？</dt>
+    <dd>デモ環境のため、送信内容は検証用にサーバログへ記録されるのみです。本番運用ではプライバシーポリシーに沿った設計が必要です。</dd>
+  </dl>
+</section>
+
+{% set plug_prompt_heading = 'チャットで相談' %}
+{% set plug_prompt_lead = 'フォームの代わりに、よくあるご質問から PLuG チャットで相談できます。' %}
+{% set plug_prompts = [
+  {
+    'label': '予約の変更・キャンセル',
+    'description': '予約番号がわからない場合もこちら',
+    'message': '予約の変更・キャンセルについて教えてください。予約番号はまだお持ちではありません。'
+  },
+  {
+    'label': 'アレルギー対応',
+    'description': '事前相談・メニュー確認',
+    'message': 'アレルギー対応は可能でしょうか？来店前に相談したいです。'
+  },
+  {
+    'label': '貸切・宴会の相談',
+    'description': '人数・日程のご相談',
+    'message': '貸切・宴会の相談をしたいです。20名程度、来月の土曜夜を想定しています。'
+  },
+  {
+    'label': 'コース・料金',
+    'description': 'メニュー内容の確認',
+    'message': 'コースメニューの内容と料金を教えてください。'
+  }
+] %}
+{% include '_plug_prompt_choices.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var form = document.getElementById("form-contact");
+    if (!form) return;
+
+    var successEl = document.getElementById("contact-success");
+    var errorEl = document.getElementById("contact-error");
+    var submitBtn = document.getElementById("contact-submit");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (successEl) successEl.hidden = true;
+      if (errorEl) errorEl.hidden = true;
+
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      var fd = new FormData(form);
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "送信中…";
+      }
+
+      fetch((window.APP_BASE || "") + "/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          csrf_token: window.__CSRF__ || "",
+          name: fd.get("name"),
+          email: fd.get("email"),
+          phone: fd.get("phone") || null,
+          category: fd.get("category"),
+          subject: fd.get("subject"),
+          message: fd.get("message"),
+          agree_privacy: fd.get("agree_privacy") === "1",
+        }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) {
+            return { ok: r.ok, status: r.status, j: j };
+          });
+        })
+        .then(function (x) {
+          if (x.ok && x.j && x.j.ok) {
+            form.reset();
+            if (successEl) successEl.hidden = false;
+            form.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+          var msg = x.j && x.j.detail;
+          if (typeof msg !== "string" && Array.isArray(msg)) {
+            msg = msg.map(function (d) { return d.msg || d; }).join(" ");
+          }
+          if (errorEl) {
+            errorEl.textContent = msg || "送信に失敗しました。しばらくしてから再度お試しください。";
+            errorEl.hidden = false;
+          }
+        })
+        .catch(function () {
+          if (errorEl) {
+            errorEl.textContent = "通信エラーが発生しました。";
+            errorEl.hidden = false;
+          }
+        })
+        .finally(function () {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "送信する";
+          }
+        });
+    });
+  })();
+</script>
+{% endblock %}

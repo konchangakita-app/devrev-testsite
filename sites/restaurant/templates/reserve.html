@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}ご予約 — KON{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>オンライン予約</h1>
+  <p class="lead">日時とコースを選んで送信してください（ハリボテ・実予約なし）。</p>
+</section>
+
+<nav class="breadcrumb" aria-label="パンくず">
+  <a href="{{ app_url('/') }}">HOME</a>
+  <span class="sep">|</span>
+  <span class="muted">ご予約</span>
+</nav>
+
+<section class="contact-panel reserve-panel">
+  <h2>予約内容の入力</h2>
+  <p class="muted contact-note">ログイン中: <strong>{{ user.username }}</strong>（{{ user.email }}）</p>
+
+  <p id="reserve-success" class="contact-success" hidden role="status">
+    予約を受け付けました（デモ）。予約番号: <strong id="reserve-confirm-id"></strong>
+  </p>
+  <p id="reserve-error" class="contact-error" hidden role="alert"></p>
+
+  <form id="form-reserve" class="contact-form">
+    <div class="contact-form__row contact-form__row--inline">
+      <div>
+        <label for="reserve-date">来店日 <span class="required">*</span></label>
+        <input id="reserve-date" name="visit_date" type="date" required min="{{ min_visit_date }}">
+      </div>
+      <div>
+        <label for="reserve-meal">時間帯 <span class="required">*</span></label>
+        <select id="reserve-meal" name="meal_type" required>
+          <option value="lunch">ランチ</option>
+          <option value="dinner" selected>ディナー</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="contact-form__row">
+      <label for="reserve-time">開始時間 <span class="required">*</span></label>
+      <select id="reserve-time" name="time_slot" required>
+        <optgroup label="ランチ" data-meal="lunch">
+          <option value="11:30">11:30</option>
+          <option value="12:00">12:00</option>
+          <option value="12:30">12:30</option>
+        </optgroup>
+        <optgroup label="ディナー" data-meal="dinner">
+          <option value="17:30">17:30</option>
+          <option value="18:00" selected>18:00</option>
+          <option value="19:00">19:00</option>
+          <option value="20:00">20:00</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="contact-form__row contact-form__row--inline">
+      <div>
+        <label for="reserve-party">人数 <span class="required">*</span></label>
+        <select id="reserve-party" name="party_size" required>
+          {% for n in range(2, 9) %}
+          <option value="{{ n }}"{% if n == 2 %} selected{% endif %}>{{ n }}名</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="reserve-seat">席種 <span class="required">*</span></label>
+        <select id="reserve-seat" name="seat_type" required>
+          <option value="table" selected>テーブル席</option>
+          <option value="private">個室（+¥3,000）</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="contact-form__row">
+      <label for="reserve-course">コース <span class="required">*</span></label>
+      <select id="reserve-course" name="course" required>
+        <option value="kon-standard">KON スタンダードコース（¥6,800）</option>
+        <option value="kon-season" selected>KON 季節コース（¥9,800）</option>
+        <option value="chef-omakase">シェフおまかせコース（¥15,000）</option>
+      </select>
+    </div>
+
+    <div class="contact-form__row">
+      <label for="reserve-notes">ご要望・備考</label>
+      <textarea id="reserve-notes" name="notes" maxlength="500" rows="3" placeholder="アレルギー、記念日のサプライズなど"></textarea>
+    </div>
+
+    <div class="contact-form__actions">
+      <a href="{{ app_url('/member') }}" class="btn btn-ghost">会員ページへ</a>
+      <button type="submit" class="btn btn-primary" id="reserve-submit">予約を確定する（デモ）</button>
+    </div>
+  </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    var meal = document.getElementById("reserve-meal");
+    var time = document.getElementById("reserve-time");
+    if (meal && time) {
+      function syncTimeOptions() {
+        var m = meal.value;
+        var opts = time.querySelectorAll("option");
+        var firstVisible = null;
+        opts.forEach(function (opt) {
+          var group = opt.parentElement;
+          var show = group && group.getAttribute("data-meal") === m;
+          opt.hidden = !show;
+          if (show && !firstVisible) firstVisible = opt;
+        });
+        if (firstVisible) {
+          time.value = firstVisible.value;
+        }
+      }
+      meal.addEventListener("change", syncTimeOptions);
+      syncTimeOptions();
+    }
+
+    var form = document.getElementById("form-reserve");
+    if (!form) return;
+    var successEl = document.getElementById("reserve-success");
+    var confirmIdEl = document.getElementById("reserve-confirm-id");
+    var errorEl = document.getElementById("reserve-error");
+    var submitBtn = document.getElementById("reserve-submit");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (successEl) successEl.hidden = true;
+      if (errorEl) errorEl.hidden = true;
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+      var fd = new FormData(form);
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "送信中…";
+      }
+      fetch((window.APP_BASE || "") + "/api/reserve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          csrf_token: window.__CSRF__ || "",
+          visit_date: fd.get("visit_date"),
+          time_slot: fd.get("time_slot"),
+          meal_type: fd.get("meal_type"),
+          party_size: Number(fd.get("party_size")),
+          seat_type: fd.get("seat_type"),
+          course: fd.get("course"),
+          notes: fd.get("notes") || "",
+        }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) {
+            return { ok: r.ok, j: j };
+          });
+        })
+        .then(function (x) {
+          if (x.ok && x.j && x.j.ok) {
+            if (confirmIdEl) confirmIdEl.textContent = x.j.reservation.id;
+            if (successEl) successEl.hidden = false;
+            form.reset();
+            return;
+          }
+          var msg = x.j && x.j.detail;
+          if (typeof msg !== "string" && Array.isArray(msg)) {
+            msg = msg.map(function (d) { return d.msg || d; }).join(" ");
+          }
+          if (errorEl) {
+            errorEl.textContent = msg || "予約に失敗しました。";
+            errorEl.hidden = false;
+          }
+        })
+        .catch(function () {
+          if (errorEl) {
+            errorEl.textContent = "通信エラーが発生しました。";
+            errorEl.hidden = false;
+          }
+        })
+        .finally(function () {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "予約を確定する（デモ）";
+          }
+        });
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}マイ予約 — KON{% endblock %}
+{% block content %}
+<section class="page-header">
+  <h1>マイ予約</h1>
+  <p class="lead">{{ user.username }} さんの予約一覧です。</p>
+</section>
+
+<nav class="breadcrumb" aria-label="パンくず">
+  <a href="{{ app_url('/member') }}">会員ページ</a>
+  <span class="sep">/</span>
+  <span class="muted">マイ予約</span>
+</nav>
+
+<section class="card-panel">
+  <div class="admin-panel__toolbar">
+    <p class="muted admin-panel__meta">予約 <strong>{{ reservations|length }}</strong> 件</p>
+    <a href="{{ app_url('/reserve') }}" class="btn btn-primary btn-sm">新規予約</a>
+  </div>
+
+  {% if reservations %}
+  <div class="table-wrap">
+    <table class="admin-table" aria-label="マイ予約一覧">
+      <thead>
+        <tr>
+          <th>予約番号</th>
+          <th>来店日</th>
+          <th>時間</th>
+          <th>人数</th>
+          <th>コース</th>
+          <th>状態</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+        <tr>
+          <td><code class="code-sm">{{ r.id }}</code></td>
+          <td>{{ r.visit_date }}</td>
+          <td>{{ r.time_slot }}<br><span class="muted">{{ r.meal_label }}</span></td>
+          <td>{{ r.party_size }}名</td>
+          <td>{{ r.course_label }}</td>
+          <td><span class="status-pill status-pill--{{ r.status }}">{{ r.status_label }}</span></td>
+          <td>
+            {% if r.status == 'confirmed' %}
+            <button type="button" class="btn btn-ghost btn-sm" data-cancel="{{ r.id }}">キャンセル</button>
+            {% else %}
+            <span class="muted">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">予約はまだありません。<a href="{{ app_url('/reserve') }}">新規予約</a> からお申し込みください。</p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function () {
+    document.querySelectorAll("[data-cancel]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-cancel");
+        if (!id || !confirm("この予約をキャンセルしますか？（デモ）")) return;
+        btn.disabled = true;
+        fetch((window.APP_BASE || "") + "/api/my/reservations/" + encodeURIComponent(id) + "/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ csrf_token: window.__CSRF__ || "" }),
+        })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) {
+            if (x.ok && x.j && x.j.ok) { window.location.reload(); return; }
+            alert((x.j && x.j.detail) || "キャンセルに失敗しました");
+            btn.disabled = false;
+          })
+          .catch(function () { alert("通信エラー"); btn.disabled = false; });
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% if plug_enabled and plug_app_id and plug_prompts %}
+<section class="plug-prompt-panel" aria-labelledby="plug-prompt-heading">
+  <h2 id="plug-prompt-heading">{{ plug_prompt_heading | default('チャットで相談') }}</h2>
+  <p class="muted plug-prompt-panel__lead">
+    {{ plug_prompt_lead | default('よくあるご質問を選ぶと、PLuG チャットの入力欄に内容が入ります。送信ボタンを押すとエージェントに届きます。') }}
+  </p>
+  <div class="plug-prompt-grid" role="list">
+    {% for item in plug_prompts %}
+    <button
+      type="button"
+      class="plug-prompt"
+      role="listitem"
+      data-prompt="{{ item.message | e }}"
+    >
+      <span class="plug-prompt__label">{{ item.label }}</span>
+      {% if item.description %}
+      <span class="plug-prompt__desc">{{ item.description }}</span>
+      {% endif %}
+    </button>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
