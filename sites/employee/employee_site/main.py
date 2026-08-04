@@ -17,6 +17,7 @@ from employee_site.devrev_service import (
     session_token_valid_for_plug,
 )
 from employee_site.employees import Employee, find_employee_by_id, find_employee_by_username, verify_password
+from shared.config_store import resolved_secret_key
 from shared.devrev.plug_conversation_create import create_plug_support_conversation
 
 TEMPLATES_DIR = BASE_DIR / "templates"
@@ -28,7 +29,7 @@ _employee_path = settings.url_prefix.rstrip("/") or "/employee"
 app = FastAPI(title="KON Employee Help", docs_url=None, redoc_url=None)
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.secret_key,
+    secret_key=resolved_secret_key(),
     session_cookie="employee_session",
     max_age=86400 * 7,
     path=_employee_path,

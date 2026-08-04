@@ -18,7 +18,8 @@ KON グループ（架空）を題材にした **DevRev サンプルサイト群
 
 | 置き場所 | 内容 |
 |----------|------|
-| **`.env`**（ルート） | `DATABASE_URL`, `SECRET_KEY`, `DEVREV_PLUG_APP_ID`, `DEVREV_APPLICATION_ACCESS_TOKEN` 等 |
+| **`.env`**（ルート） | `DATABASE_URL`, `DEVREV_PLUG_APP_ID`, `DEVREV_APPLICATION_ACCESS_TOKEN` 等 |
+| **Neon `app_config`** | `SECRET_KEY`（全サイト共通 1 本）— init_db で自動生成 |
 
 ```bash
 cp .env.example .env
@@ -69,7 +70,7 @@ PYTHONPATH=sites/restaurant:sites/employee uvicorn app.main:app --reload --host 
 ## Vercel デプロイ
 
 1. GitHub に push したうえで [Vercel](https://vercel.com) からリポジトリをインポート（Root Directory は空のまま）
-2. **Environment Variables** にルート `.env` の値を写す（`DATABASE_URL`, `SECRET_KEY`, `DEVREV_*` 等）
+2. **Environment Variables** にルート `.env` の値を写す（`DATABASE_URL`, `DEVREV_*` 等）。`SECRET_KEY` は Neon 管理のため不要
 3. 初回デプロイ前に Neon へ `init_db.py` を実行済みであること（ローカルからで可）
 4. デプロイ後: `https://<project>.vercel.app/`（ポータル）、`/restaurant/`（レストラン）、`/employee/`（社内ヘルプ）
 

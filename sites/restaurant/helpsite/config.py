@@ -32,7 +32,7 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
 
-    secret_key: str = "dev-secret-change-me"  # env: SECRET_KEY
+    secret_key: str = "dev-secret-change-me"  # env: SECRET_KEY — 非推奨: Neon app_config で管理
     url_prefix: str = "/restaurant"  # env: URL_PREFIX — モノレポ root からのマウントパス
     # env: DATABASE_URL / DEVREV_* — リポジトリルート .env に一括設定
     database_url: str = ""

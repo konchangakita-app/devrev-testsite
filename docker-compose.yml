@@ -7,7 +7,6 @@ services:
     env_file:
       - .env
     environment:
-      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - DATABASE_URL=${DATABASE_URL:-}
       - DEVREV_PLUG_APP_ID=${DEVREV_PLUG_APP_ID:-}
       - DEVREV_PLUG_ENABLE_SESSION_RECORDING=${DEVREV_PLUG_ENABLE_SESSION_RECORDING:-false}

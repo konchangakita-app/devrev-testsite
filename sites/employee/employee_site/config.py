@@ -23,7 +23,7 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
 
-    secret_key: str = "dev-secret-change-me"
+    secret_key: str = "dev-secret-change-me"  # 非推奨: Neon app_config で管理
     url_prefix: str = "/employee"
     devrev_plug_app_id: str = ""
     devrev_plug_enable_session_recording: bool = False

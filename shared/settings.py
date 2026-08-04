@@ -19,7 +19,7 @@ class SharedSettings(BaseSettings):
         extra="ignore",
     )
 
-    secret_key: str = "dev-secret-change-me"
+    secret_key: str = "dev-secret-change-me"  # 非推奨: SECRET_KEY は Neon app_config で管理
     database_url: str = ""
 
 

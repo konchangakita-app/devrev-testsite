@@ -27,6 +27,7 @@ from helpsite.devrev_service import (
 from helpsite.models import User
 from helpsite.plug_conversation_sync import update_conversation_user_ip
 from shared.devrev.plug_conversation_create import create_plug_support_conversation
+from shared.config_store import resolved_secret_key
 from helpsite.reservations_demo import (
     STATUS_LABELS,
     add_reservation,
@@ -50,7 +51,7 @@ app = FastAPI(title="KON Restaurant Demo", docs_url=None, redoc_url=None)
 app.include_router(admin_api_router, prefix="/api")
 app.add_middleware(
     SessionMiddleware,
-    secret_key=settings.secret_key,
+    secret_key=resolved_secret_key(),
     session_cookie="helpsite_session",
     max_age=86400 * 7,
     path=_restaurant_path,

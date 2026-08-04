@@ -9,6 +9,7 @@ from helpsite.config import INSTANCE_DIR, is_sqlite_database
 from helpsite.database import SessionLocal, engine
 from helpsite.models import Base, Reservation, User
 from helpsite.reservations_demo import DEMO_RESERVATION_SEEDS
+from shared.config_store import ensure_secret_key
 from shared.gate.models import Base as GateBase
 from werkzeug.security import generate_password_hash
 
@@ -132,6 +133,7 @@ def main() -> None:
         INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     GateBase.metadata.create_all(bind=engine)
+    ensure_secret_key()
     migrate_sqlite_schema()
     db = SessionLocal()
     try:

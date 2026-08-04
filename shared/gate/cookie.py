@@ -3,14 +3,14 @@ from typing import Any, Optional
 
 from itsdangerous import BadSignature, URLSafeSerializer
 
-from shared.settings import get_shared_settings
+from shared.config_store import resolved_secret_key
 
 COOKIE_NAME = "demo_gate_session"
 SERIALIZER_SALT = "demo-gate-v1"
 
 
 def _serializer() -> URLSafeSerializer:
-    return URLSafeSerializer(get_shared_settings().secret_key, salt=SERIALIZER_SALT)
+    return URLSafeSerializer(resolved_secret_key(), salt=SERIALIZER_SALT)
 
 
 def sign_gate_session(token_id: int) -> str:
