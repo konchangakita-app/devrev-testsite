@@ -35,6 +35,8 @@ cp .env.example .env
 
 限定公開デモ向け。詳細は [docs/DESIGN.md](docs/DESIGN.md) §7.2。
 
+**運用手順（確認・作成・無効化）:** [docs/demo-invite-links.md](docs/demo-invite-links.md)
+
 **Vercel では追加の環境変数は不要です**（`VERCEL` / `VERCEL_URL` は自動設定され、ゲート ON・招待 URL 生成に使われます）。
 
 ローカルでゲートを試すときだけ `.env` に `DEMO_GATE_ENABLED=true` を設定してください。

@@ -591,6 +591,7 @@ Git リポジトリ（devrev-samplesite） 1つ
 | `docs/TODO.md` | 今後のやること（軽いメモ） | 作業開始時に確認。方針確定後は DESIGN.md へ反映 |
 | `docs/future-multi-plug.md` | マルチ PLuG 拡張手順（将来） | 製品リリース後のアップデート用 |
 | `scripts/manage_invite_tokens.py` | デモ招待トークン発行・一覧・無効化 | Agent 運用（§7.2） |
+| `docs/demo-invite-links.md` | 招待リンクの確認・作成・無効化手順 | 運用者向け |
 | `.cursor/rules/design.mdc` | Cursor ルール | 本リポジトリ作業時に Agent が DESIGN.md 参照を促す（`alwaysApply: true`） |
 | `sites/restaurant/docs/` | PLuG IP 同期、Snap-in メモ等 | 実装詳細（方針の正ではない） |
 
