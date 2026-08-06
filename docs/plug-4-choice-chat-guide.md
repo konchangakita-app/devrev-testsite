@@ -100,6 +100,7 @@ DEVREV_APPLICATION_ACCESS_TOKEN=your-aat-token   # 自動送信に必要
 <script>
   window.plugSDK.init({
     app_id: "YOUR_PLUG_APP_ID",
+    locale: "ja-JP",
     enable_default_launcher: true,
     widget_alignment: "right",
     spacing: { bottom: "20px", side: "20px" }
