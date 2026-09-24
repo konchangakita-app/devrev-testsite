@@ -3,7 +3,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -105,8 +105,8 @@ def crawl_for_unlink(run_id: str, db: Session = Depends(get_db)) -> HTMLResponse
     return HTMLResponse(_html(f"Crawl validation for-unlink ({run_id})", marker))
 
 
-@router.get("/{run_id}/for-redirect")
-def crawl_for_redirect(run_id: str, request: Request, db: Session = Depends(get_db)) -> HTMLResponse | RedirectResponse:
+@router.get("/{run_id}/for-redirect", response_model=None)
+def crawl_for_redirect(run_id: str, request: Request, db: Session = Depends(get_db)) -> Response:
     row = get_or_create_run(db, run_id)
     if row.redirect_enabled:
         target = (row.redirect_target or "").strip() or f"/validation/crawl/{run_id}/keep"
