@@ -6,7 +6,10 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from shared.database import engine
 from shared.gate.middleware import DemoGateMiddleware
+from shared.validation.models import ValidationBase
+from validation.crawl.routes import router as validation_crawl_router
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESTAURANT_ROOT = REPO_ROOT / "sites" / "restaurant"
@@ -26,6 +29,14 @@ from portal.routes import router as portal_router  # noqa: E402
 
 app = FastAPI(title="KON Group Demo Sites", docs_url=None, redoc_url=None)
 app.add_middleware(DemoGateMiddleware)
+
+
+@app.on_event("startup")
+def ensure_validation_tables() -> None:
+    ValidationBase.metadata.create_all(bind=engine)
+
+
+app.include_router(validation_crawl_router)
 app.mount("/portal-static", StaticFiles(directory=PORTAL_DIR / "static"), name="portal-static")
 app.include_router(portal_router)
 app.mount("/restaurant", restaurant_app)

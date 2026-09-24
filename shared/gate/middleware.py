@@ -15,6 +15,7 @@ from shared.gate.tokens import (
 from shared.settings import is_demo_gate_enabled
 
 EXEMPT_PATHS = {"/health"}
+EXEMPT_PREFIXES = ("/validation/crawl",)
 
 GATE_HTML = """<!DOCTYPE html>
 <html lang="ja">
@@ -41,7 +42,7 @@ class DemoGateMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         path = request.url.path
-        if path in EXEMPT_PATHS:
+        if path in EXEMPT_PATHS or path.startswith(EXEMPT_PREFIXES):
             return await call_next(request)
 
         invite_value = request.query_params.get(INVITE_QUERY_PARAM)
