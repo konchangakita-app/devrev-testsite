@@ -6,9 +6,8 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from shared.database import engine
 from shared.gate.middleware import DemoGateMiddleware
-from shared.validation.models import ValidationBase
+from shared.validation.store import ensure_validation_tables
 from validation.crawl.routes import router as validation_crawl_router
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -32,8 +31,8 @@ app.add_middleware(DemoGateMiddleware)
 
 
 @app.on_event("startup")
-def ensure_validation_tables() -> None:
-    ValidationBase.metadata.create_all(bind=engine)
+def ensure_validation_tables_on_startup() -> None:
+    ensure_validation_tables()
 
 
 app.include_router(validation_crawl_router)

@@ -2,10 +2,22 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from shared.validation.models import CrawlValidationRun
+from shared.database import engine
+from shared.validation.models import CrawlValidationRun, ValidationBase
+
+_tables_ready = False
+
+
+def ensure_validation_tables() -> None:
+    global _tables_ready
+    if _tables_ready:
+        return
+    ValidationBase.metadata.create_all(bind=engine)
+    _tables_ready = True
 
 
 def get_or_create_run(db: Session, run_id: str) -> CrawlValidationRun:
+    ensure_validation_tables()
     row = db.get(CrawlValidationRun, run_id)
     if row is None:
         row = CrawlValidationRun(run_id=run_id)

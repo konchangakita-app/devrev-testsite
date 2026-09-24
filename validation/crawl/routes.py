@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from shared.database import get_db
-from shared.validation.store import get_or_create_run, run_state_dict, update_run
+from shared.validation.store import ensure_validation_tables, get_or_create_run, run_state_dict, update_run
 
 router = APIRouter(prefix="/validation/crawl", tags=["validation-crawl"])
 
