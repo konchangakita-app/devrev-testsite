@@ -8,6 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ app_url('/static/css/style.css') }}">
+  {% if plug_enabled and plug_app_id %}
+  <link rel="preconnect" href="https://plug-platform.devrev.ai">
+  {% endif %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block site_header %}
@@ -89,7 +92,7 @@
     window.__USER_ID__ = {% if user %}{{ user.id }}{% else %}null{% endif %};
     window.APP_BASE = {{ url_prefix | tojson }};
   </script>
-  <script src="{{ app_url('/static/js/app.js') }}"></script>
+  <script defer src="{{ app_url('/static/js/app.js') }}"></script>
   {% block extra_js %}{% endblock %}
 
   {% if plug_enabled and plug_app_id %}
@@ -751,6 +754,19 @@
               console.info("[PLuG debug] onEvent", payload.type, payload);
             }
             if (payload && payload.type === "ON_PLUG_WIDGET_READY") {
+              if (plugDebug && !plugWidgetReady) {
+                var navigation = performance.getEntriesByType("navigation")[0];
+                var firstPaint = performance.getEntriesByName("first-contentful-paint")[0];
+                var token = performance.getEntriesByType("resource").find(function (entry) {
+                  return entry.name.includes("/api/plug/session-token");
+                });
+                console.info("[PLuG timing] " + JSON.stringify({
+                  ttfbMs: navigation ? Math.round(navigation.responseStart) : null,
+                  firstContentfulPaintMs: firstPaint ? Math.round(firstPaint.startTime) : null,
+                  tokenRequestMs: token ? Math.round(token.duration) : null,
+                  widgetReadyMs: Math.round(performance.now())
+                }));
+              }
               plugWidgetReady = true;
               flushPendingPlugConversation();
               applySessionPropertiesFromUserContext("on_ready").catch(function (e) {

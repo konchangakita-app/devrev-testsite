@@ -4,9 +4,33 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "sites/restaurant/static/css/style.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "sites/restaurant/static/js/app.js",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/restaurant/static/css/style\\.css",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/sites/restaurant/static/css/style.css"
+    },
+    {
+      "src": "/restaurant/static/js/app\\.js",
+      "methods": [
+        "GET",
+        "HEAD"
+      ],
+      "dest": "/sites/restaurant/static/js/app.js"
+    },
     {
       "src": "/(.*)",
       "dest": "api/index.py"
