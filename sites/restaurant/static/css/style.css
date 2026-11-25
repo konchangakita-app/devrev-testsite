@@ -805,3 +805,31 @@ code, .code-sm {
   .header-nav { display: none; }
   .contact-form__row--inline { grid-template-columns: 1fr; }
 }
+
+
+.plug-launcher {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 950;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #3730d8;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px #0003;
+}
+
+.plug-launcher:focus-visible {
+  outline: 2px solid #3730d8;
+  outline-offset: 3px;
+}
+
+.plug-launcher__unread {
+  margin-left: 6px;
+  font-size: 0.8em;
+}

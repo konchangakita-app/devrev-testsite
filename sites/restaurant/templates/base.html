@@ -114,6 +114,9 @@
     </div>
   </div>
   {% endif %}
+  <button id="plug-launcher" class="plug-launcher" type="button" aria-haspopup="dialog" hidden>
+    チャット<span id="plug-launcher-unread" class="plug-launcher__unread" hidden></span>
+  </button>
   <p id="plug-session-error" role="status" hidden>チャットに接続できませんでした。ページを再読み込みして再度お試しください。</p>
   <script defer src="https://plug-platform.devrev.ai/static/plug.js"></script>
   <script>
@@ -728,11 +731,17 @@
             })
             .catch(function () {});
         }
+        var launcher = document.getElementById("plug-launcher");
+        var launcherUnread = document.getElementById("plug-launcher-unread");
+        launcher.addEventListener("click", function () {
+          window.plugSDK.toggleWidget(true);
+        });
+
         function runPlugInit() {
           var initOpts = {
             app_id: appId,
             locale: "ja-JP",
-            enable_default_launcher: true,
+            enable_default_launcher: false,
             widget_alignment: "right",
             spacing: { bottom: "20px", side: "20px" }
           };
@@ -757,6 +766,11 @@
             if (plugDebug && payload) {
               console.info("[PLuG debug] onEvent", payload.type, payload);
             }
+            if (payload && payload.type === "ON_PLUG_WIDGET_UNREAD_COUNT_CHANGE") {
+              var unreadCount = Number(payload.value) || 0;
+              launcherUnread.hidden = unreadCount <= 0;
+              launcherUnread.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+            }
             if (payload && payload.type === "ON_PLUG_WIDGET_READY") {
               if (plugDebug && !plugWidgetReady) {
                 var navigation = performance.getEntriesByType("navigation")[0];
@@ -777,6 +791,7 @@
                 }));
               }
               plugWidgetReady = true;
+              launcher.hidden = false;
               flushPendingPlugConversation();
               applySessionPropertiesFromUserContext("on_ready").catch(function (e) {
                 console.warn("applySessionPropertiesFromUserContext", e);
