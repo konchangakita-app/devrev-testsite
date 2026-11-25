@@ -745,6 +745,7 @@
               console.info("[PLuG debug] session_recording_options enabled");
             }
           }
+          window.plugSDK.init(initOpts);
           window.plugSDK.onEvent(function (payload) {
             if (plugDebug && payload) {
               console.info("[PLuG debug] onEvent", payload.type, payload);
@@ -778,7 +779,6 @@
               offerUserIpEntry(ref);
             }
           });
-          window.plugSDK.init(initOpts);
         }
         try {
           runPlugInit();
