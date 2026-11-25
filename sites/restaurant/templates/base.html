@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ app_url('/static/css/style.css') }}">
   {% if plug_enabled and plug_app_id %}
   <link rel="preconnect" href="https://plug-platform.devrev.ai">
+  <link rel="preconnect" href="https://api.devrev.ai" crossorigin>
   {% endif %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
