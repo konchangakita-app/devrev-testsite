@@ -1,3 +1,4 @@
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, RedirectResponse, Response
@@ -47,16 +48,16 @@ class DemoGateMiddleware(BaseHTTPMiddleware):
 
         invite_value = request.query_params.get(INVITE_QUERY_PARAM)
         if invite_value:
-            return self._handle_invite_link(request, invite_value, call_next)
+            return await run_in_threadpool(self._handle_invite_link, request, invite_value)
 
         token_id = read_gate_session(request.cookies.get(COOKIE_NAME))
-        if token_id is not None and self._cookie_token_valid(token_id):
+        if token_id is not None and await run_in_threadpool(self._cookie_token_valid, token_id):
             return await call_next(request)
 
         return HTMLResponse(GATE_HTML, status_code=403)
 
     def _handle_invite_link(
-        self, request: Request, invite_value: str, call_next
+        self, request: Request, invite_value: str
     ) -> Response:
         db = SessionLocal()
         try:

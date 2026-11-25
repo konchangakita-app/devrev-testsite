@@ -57,8 +57,6 @@ class Settings(BaseSettings):
     devrev_plug_user_ref: str = "member_id"
     # auth-tokens.create の requested_token_type: session | session_rev_public
     devrev_plug_requested_token_type: str = "session"
-    # true: 登録/ログイン時の auth-tokens.create を遅延（PLuG init まで RevUser を作らない）
-    devrev_plug_defer_session_on_auth: bool = False
     # 任意。設定時は Authorization がこの値と一致すれば「管理者」として全ユーザ参照可（ps_ 形式を推奨）
     admin_api_key: str = ""
 

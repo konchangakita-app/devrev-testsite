@@ -81,21 +81,14 @@ def validate_csrf(request: Request, token: Optional[str]) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token")
 
 
-def plug_template_context(request: Request) -> dict[str, Any]:
+def plug_template_context() -> dict[str, Any]:
     s = get_settings()
     plug_app_id = resolved_plug_app_id()
-    plug_session_token = request.session.get("devrev_session_token") or None
-    if plug_session_token and plug_app_id and not session_token_valid_for_plug(
-        plug_session_token, plug_app_id
-    ):
-        request.session.pop("devrev_session_token", None)
-        plug_session_token = None
     can_sync_cf = bool(resolved_devrev_pat() or resolved_application_access_token())
     cf_api = (s.devrev_conversation_custom_field_user_ip or "tnt__user_ip").strip() or "tnt__user_ip"
     has_aat = bool(resolved_application_access_token())
     return {
         "plug_app_id": plug_app_id,
-        "plug_session_token": plug_session_token,
         "plug_enabled": bool(plug_app_id),
         "plug_session_recording": s.devrev_plug_enable_session_recording,
         "plug_conversation_sync": can_sync_cf,
@@ -161,23 +154,12 @@ def page_context(request: Request, db: Session) -> dict[str, Any]:
     ensure_csrf(request)
     member = optional_user(request, db)
     admin = optional_admin(request, db)
-    plug_ctx = plug_template_context(request)
-    if plug_ctx.get("plug_enabled"):
-        if plug_ctx.get("plug_auto_send"):
-            # 匿名でも create-conversation と PLuG init で同一 RevUser session を使う
-            token = resolve_plug_session_token(request, member)
-            if token:
-                plug_ctx["plug_session_token"] = token
-        elif member:
-            plug_ctx["plug_session_token"] = (
-                request.session.get("devrev_session_token") or plug_ctx.get("plug_session_token")
-            )
     return {
         "user": member,
         "admin_user": admin,
         "csrf_token": request.session["csrf_token"],
         "url_prefix": _restaurant_path,
-        **plug_ctx,
+        **plug_template_context(),
     }
 
 
@@ -217,7 +199,7 @@ def admin_template_context(
         "csrf_token": request.session["csrf_token"],
         "admin_active": admin_active,
         "url_prefix": _restaurant_path,
-        **plug_template_context(request),
+        **plug_template_context(),
     }
 
 
@@ -404,16 +386,19 @@ def plug_sync_conversation_custom_fields(
 
 
 @app.get("/api/plug/session-token")
-def plug_session_token(request: Request, db: Session = Depends(get_db)) -> JSONResponse:
+def plug_session_token(request: Request, member: bool = False, db: Session = Depends(get_db)) -> JSONResponse:
     """PLuG fetchSessionToken 用。ウィジェットとサーバで同一 RevUser session を共有する。"""
     user = optional_user(request, db)
+    if member and user is None:
+        raise HTTPException(status_code=401, detail="Member session expired")
     token = resolve_plug_session_token(request, user)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Set DEVREV_APPLICATION_ACCESS_TOKEN for PLuG session",
         )
-    return JSONResponse({"access_token": token})
+    db.commit()
+    return JSONResponse({"access_token": token}, headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/plug/create-conversation")
@@ -425,12 +410,15 @@ def plug_create_conversation(
     """PLuG 初回メッセージを conversations.create で送信し、会話 ID を返す。"""
     validate_csrf(request, body.csrf_token)
     user = optional_user(request, db)
+    if request.headers.get("X-PLuG-Member") == "1" and user is None:
+        raise HTTPException(status_code=401, detail="Member session expired")
     token = resolve_plug_session_token(request, user)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Set DEVREV_APPLICATION_ACCESS_TOKEN for PLuG auto-send",
         )
+    db.commit()
     url_context = str(request.headers.get("referer") or request.url_for("index"))
     try:
         result = create_plug_support_conversation(
@@ -644,16 +632,6 @@ def member_page(request: Request, db: Session = Depends(get_db)) -> Any:
         request.session.pop("user_id", None)
         return RedirectResponse(app_url("/"), status_code=302)
 
-    ensure_csrf(request)
-    s = get_settings()
-    if resolved_application_access_token() and not request.session.get("devrev_session_token"):
-        token = request_plug_session_token(user, s)
-        if token:
-            request.session["devrev_session_token"] = token
-            db.commit()
-        else:
-            db.rollback()
-
     return templates.TemplateResponse(
         request,
         "member.html",
@@ -685,22 +663,10 @@ def auth_admin_logout(request: Request, body: CsrfBody) -> JSONResponse:
     return JSONResponse({"ok": True, "redirect": app_url("/admin/login")})
 
 
-def _try_devrev_session(request: Request, db: Session, user: User) -> None:
+def _clear_plug_session(request: Request) -> None:
     request.session.pop("devrev_session_token", None)
-    # 匿名 PLuG トークンは会員トークンと併存すると Cookie が 4KB 超過しブラウザが破棄する
     request.session.pop("devrev_anon_session_token", None)
     request.session.pop("plug_anon_user_ref", None)
-    s = get_settings()
-    if not resolved_application_access_token():
-        db.commit()
-        return
-    if s.devrev_plug_defer_session_on_auth:
-        db.commit()
-        return
-    token = request_plug_session_token(user, s)
-    if token:
-        request.session["devrev_session_token"] = token
-    db.commit()
 
 
 @app.post("/auth/login")
@@ -714,7 +680,7 @@ def auth_login(
     if not user or not check_password_hash(user.password_hash, body.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     request.session["user_id"] = user.id
-    _try_devrev_session(request, db, user)
+    _clear_plug_session(request)
     return JSONResponse({"ok": True, "redirect": app_url("/member")})
 
 
@@ -740,7 +706,8 @@ def auth_register(
     db.add(user)
     db.flush()
     request.session["user_id"] = user.id
-    _try_devrev_session(request, db, user)
+    db.commit()
+    _clear_plug_session(request)
     return JSONResponse({"ok": True, "redirect": app_url("/member")})
 
 

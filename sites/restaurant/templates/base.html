@@ -107,11 +107,11 @@
     </div>
   </div>
   {% endif %}
-  <script src="https://plug-platform.devrev.ai/static/plug.js"></script>
+  <p id="plug-session-error" role="status" hidden>チャットに接続できませんでした。ページを再読み込みして再度お試しください。</p>
+  <script defer src="https://plug-platform.devrev.ai/static/plug.js"></script>
   <script>
     (function () {
       var appId = {{ plug_app_id | tojson }};
-      var sessionToken = {{ plug_session_token | tojson }};
       var plugSessionRecording = {{ plug_session_recording | default(false) | tojson }};
       /** DEVREV_PAT または AAT があれば true → conversations.update で user_ip を会話 CF に同期 */
       var plugConversationSync = {{ plug_conversation_sync | default(false) | tojson }};
@@ -126,6 +126,20 @@
       var plugMemberLoggedIn = window.__USER_ID__ != null;
       var plugWidgetReady = false;
       var pendingPlugConversation = null;
+      var plugSession = (plugMemberLoggedIn || plugAutoSend)
+        ? fetch((window.APP_BASE || "") + "/api/plug/session-token" + (plugMemberLoggedIn ? "?member=true" : ""), {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" }
+          }).then(function (response) {
+            return response.ok ? response.json() : null;
+          }).then(function (data) {
+            return data && data.access_token ? data.access_token : null;
+          }).catch(function () { return null; })
+        : Promise.resolve(null);
+
+      function showPlugSessionError() {
+        document.getElementById("plug-session-error").hidden = false;
+      }
 
       function applyPlugPromptSessionProperties(text) {
         if (!text) {
@@ -160,7 +174,8 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Accept: "application/json"
+            Accept: "application/json",
+            "X-PLuG-Member": plugMemberLoggedIn ? "1" : "0"
           },
           credentials: "same-origin",
           body: JSON.stringify({
@@ -251,9 +266,10 @@
         });
       });
 
-      function tryInit() {
-        if (!window.plugSDK) {
-          setTimeout(tryInit, 100);
+      async function tryInit() {
+        var sessionToken = await plugSession;
+        if (!window.plugSDK || (plugMemberLoggedIn && !sessionToken)) {
+          showPlugSessionError();
           return;
         }
         bindUserIpPanelOnce();
@@ -309,13 +325,19 @@
           }
           return props;
         }
+        var userContextRequest;
+        function getUserContext() {
+          if (!userContextRequest) {
+            userContextRequest = fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "same-origin" })
+              .then(function (response) {
+                return response.ok ? response.json() : null;
+              }).catch(function () { return null; });
+          }
+          return userContextRequest;
+        }
         async function applySessionPropertiesFromUserContext(phase) {
           try {
-            var res = await fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" });
-            if (!res.ok) {
-              throw new Error("HTTP " + res.status);
-            }
-            var data = await res.json();
+            var data = await getUserContext();
             if (plugDebug) {
               console.info("[PLuG debug] /api/user-context OK (" + phase + ")", data);
             }
@@ -691,13 +713,7 @@
           var inp = document.getElementById("plug-user-ip-input");
           panel.removeAttribute("hidden");
           panel.setAttribute("aria-hidden", "false");
-          fetch((window.APP_BASE || "") + "/api/user-context", { credentials: "include" })
-            .then(function (r) {
-              if (r.ok) {
-                return r.json();
-              }
-              return null;
-            })
+          getUserContext()
             .then(function (d) {
               if (inp && d && d.user_ip) {
                 inp.value = String(d.user_ip);
@@ -705,7 +721,7 @@
             })
             .catch(function () {});
         }
-        function runPlugInit(useSessionToken, onReadyCallback) {
+        function runPlugInit() {
           var initOpts = {
             app_id: appId,
             locale: "ja-JP",
@@ -713,7 +729,7 @@
             widget_alignment: "right",
             spacing: { bottom: "20px", side: "20px" }
           };
-          if (useSessionToken && sessionToken) {
+          if (sessionToken) {
             initOpts.session_token = sessionToken;
           }
           if (plugSessionRecording) {
@@ -729,34 +745,12 @@
               console.info("[PLuG debug] session_recording_options enabled");
             }
           }
-          if (plugAutoSend && !(plugMemberLoggedIn && sessionToken)) {
-            initOpts.fetchSessionToken = function () {
-              return fetch((window.APP_BASE || "") + "/api/plug/session-token", {
-                credentials: "include",
-                headers: { Accept: "application/json" }
-              }).then(function (r) {
-                if (!r.ok) {
-                  throw new Error("HTTP " + r.status);
-                }
-                return r.json();
-              }).then(function (d) {
-                return d && d.access_token ? d.access_token : null;
-              });
-            };
-          }
-          window.plugSDK.init(initOpts);
-          applySessionPropertiesFromUserContext("after_init").catch(function (e) {
-            console.warn("applySessionPropertiesFromUserContext", e);
-          });
           window.plugSDK.onEvent(function (payload) {
             if (plugDebug && payload) {
               console.info("[PLuG debug] onEvent", payload.type, payload);
             }
             if (payload && payload.type === "ON_PLUG_WIDGET_READY") {
               plugWidgetReady = true;
-              if (typeof onReadyCallback === "function") {
-                onReadyCallback();
-              }
               flushPendingPlugConversation();
               applySessionPropertiesFromUserContext("on_ready").catch(function (e) {
                 console.warn("applySessionPropertiesFromUserContext", e);
@@ -784,52 +778,13 @@
               offerUserIpEntry(ref);
             }
           });
+          window.plugSDK.init(initOpts);
         }
         try {
-          if (sessionToken) {
-            var plugFallbackDone = false;
-            runPlugInit(true, function () {
-              plugWidgetReady = true;
-              flushPendingPlugConversation();
-            });
-            setTimeout(function () {
-              if (plugWidgetReady || plugFallbackDone) {
-                return;
-              }
-              plugFallbackDone = true;
-              if (plugMemberLoggedIn) {
-                console.warn(
-                  "[PLuG] session_token 付き init 後にウィジェットが ready になりませんでした（会員ログイン中のため匿名フォールバックは行いません）"
-                );
-                return;
-              }
-              console.warn(
-                "[PLuG] session_token 付き init 後にウィジェットが表示されませんでした。匿名モードで再試行します"
-              );
-              try {
-                runPlugInit(false);
-              } catch (fallbackErr) {
-                console.warn("PLuG anonymous fallback init failed", fallbackErr);
-              }
-            }, 8000);
-          } else {
-            runPlugInit(false);
-          }
-        } catch (e) {
-          if (sessionToken) {
-            if (plugMemberLoggedIn) {
-              console.warn("PLuG init failed with session_token (logged-in member; no anonymous retry)", e);
-            } else {
-              console.warn("PLuG init failed with session_token, retrying anonymous", e);
-              try {
-                runPlugInit(false);
-              } catch (e2) {
-                console.warn("PLuG init failed", e2);
-              }
-            }
-          } else {
-            console.warn("PLuG init failed", e);
-          }
+          runPlugInit();
+        } catch (error) {
+          console.warn("PLuG init failed", error);
+          showPlugSessionError();
         }
       }
       if (document.readyState === "loading") {
